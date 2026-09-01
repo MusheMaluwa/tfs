@@ -1,0 +1,46 @@
+# NOTE: written for this repository's actual GitHub Actions setup but
+# not executed here (no CI runner available in the environment this was
+# produced in) — the syntax follows standard GitHub Actions structure;
+# confirm on first push before trusting it fully.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run backend test suite (zero install needed today)
+        working-directory: backend
+        run: node --test src/__tests__/*.test.js
+
+      # Once the production stack (Express/PostgreSQL) lands per the
+      # Development Stack doc, this job additionally needs:
+      # - npm ci
+      # - npm run lint
+      # - npm run typecheck   (once TypeScript is adopted)
+      # - a PostgreSQL service container for integration tests
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Run end-to-end suite against a local server
+        run: |
+          cd backend && node src/seed.js && node src/server.js &
+          sleep 2
+          cd ../e2e && npx playwright test

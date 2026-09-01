@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TFS Logistics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<style>
+  :root{
+    --bg:#F4F7FB; --panel:#FFFFFF; --panel-2:#EEF3FA; --panel-3:#E1EAF6;
+    --line:rgba(10,40,80,0.08); --line-strong:rgba(10,40,80,0.18);
+    --amber:#0B63CE; --amber-dim:rgba(11,99,206,0.15);
+    --cyan:#2AA8E0; --cyan-dim:rgba(42,168,224,0.15);
+    --green:#1E9E63; --green-dim:rgba(30,158,99,0.15);
+    --red:#D93025; --red-dim:rgba(217,48,37,0.15);
+    --violet:#6C5CE7; --violet-dim:rgba(108,92,231,0.15);
+    --text:#101A2B; --text-dim:#5B6B82; --text-dimmer:#93A0B2;
+    --font-display:'Space Grotesk',sans-serif; --font-body:'Inter',sans-serif; --font-mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;} html,body{margin:0;padding:0;}
+  body{ background:var(--bg); color:var(--text); font-family:var(--font-body); min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .wrap{ max-width:1100px; margin:0 auto; padding:20px 18px 70px; }
+  header.top{ display:flex; align-items:center; justify-content:space-between; padding-bottom:14px; margin-bottom:16px; border-bottom:1px solid var(--line); flex-wrap:wrap; gap:10px; }
+  .brand{ display:flex; align-items:center; gap:11px; }
+  .brand .mark{ width:auto; min-width:42px; height:32px; padding:0 8px; border-radius:6px; background:linear-gradient(135deg,var(--amber),var(--cyan)); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; color:#FFFFFF; font-size:12px; letter-spacing:0.5px; }
+  .brand h1{ font-family:var(--font-display); font-size:19px; margin:0; letter-spacing:0.3px; }
+  .brand .sub{ font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim); letter-spacing:1.3px; text-transform:uppercase; margin-top:1px; }
+
+  nav.tabs{ display:flex; gap:2px; margin-bottom:18px; border-bottom:1px solid var(--line); overflow-x:auto; }
+  nav.tabs button{ background:transparent; border:none; color:var(--text-dim); font-family:var(--font-display); font-size:13.5px; padding:10px 4px; margin-right:18px; cursor:pointer; position:relative; white-space:nowrap; }
+  nav.tabs button.active{ color:var(--text); }
+  nav.tabs button.active::after{ content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--amber); }
+  nav.tabs button:hover{ color:var(--text); }
+
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px; }
+  .panel + .panel{ margin-top:14px; }
+  .panel h2{ font-family:var(--font-display); font-size:16px; margin:0 0 4px; }
+  .panel h3{ font-family:var(--font-display); font-size:13.5px; margin:16px 0 8px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.3px; }
+  .panel .desc{ font-family:var(--font-body); font-size:12.5px; color:var(--text-dim); margin-bottom:14px; }
+
+  .btn{ font-family:var(--font-display); font-size:13px; letter-spacing:0.2px; border-radius:7px; border:1px solid var(--line-strong); background:var(--panel-2); color:var(--text); padding:10px 15px; cursor:pointer; }
+  .btn:hover{ border-color:var(--text-dim); }
+  .btn.primary{ background:var(--amber); color:#FFFFFF; border-color:var(--amber); font-weight:600; }
+  .btn.primary:hover{ filter:brightness(1.08); }
+  .btn.sm{ padding:6px 10px; font-size:11.5px; }
+  input, select{ font-family:var(--font-body); font-size:13.5px; padding:9px 11px; border-radius:7px; border:1px solid var(--line-strong); background:var(--panel-2); color:var(--text); }
+  input:focus, select:focus{ outline:none; border-color:var(--cyan); }
+
+  .chip{ display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.6px; text-transform:uppercase; padding:5px 10px; border-radius:20px; border:1px solid transparent; white-space:nowrap; }
+  .chip .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .chip.c-idle{ background:rgba(10,37,64,0.05); color:var(--text-dim); border-color:var(--line-strong); }
+  .chip.c-active{ background:var(--amber-dim); color:var(--amber); border-color:rgba(11,99,206,0.4); }
+  .chip.c-transit{ background:var(--cyan-dim); color:var(--cyan); border-color:rgba(42,168,224,0.4); }
+  .chip.c-hub{ background:var(--violet-dim); color:var(--violet); border-color:rgba(108,92,231,0.4); }
+  .chip.c-return{ background:var(--green-dim); color:var(--green); border-color:rgba(30,158,99,0.4); }
+  .chip.c-outstanding{ background:var(--red-dim); color:var(--red); border-color:rgba(217,48,37,0.4); }
+  .chip.c-damaged{ background:var(--red-dim); color:var(--red); border-color:rgba(217,48,37,0.4); }
+  .chip.c-branch{ background:var(--violet-dim); color:var(--violet); border-color:rgba(108,92,231,0.4); }
+
+  table.ref{ width:100%; border-collapse:collapse; }
+  table.ref th{ text-align:left; font-family:var(--font-mono); font-size:9.5px; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-dim); padding:8px 9px; border-bottom:1px solid var(--line-strong); }
+  table.ref td{ padding:10px 9px; border-bottom:1px solid var(--line); font-size:12.5px; vertical-align:top; }
+
+  table.reg{ width:100%; border-collapse:collapse; }
+  table.reg th{ text-align:left; font-family:var(--font-mono); font-size:9.5px; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-dim); padding:8px 9px; border-bottom:1px solid var(--line-strong); }
+  table.reg td{ padding:9px; border-bottom:1px solid var(--line); font-size:12.5px; }
+  .filters{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+
+  .kpi-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+  @media (max-width:760px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+  .kpi{ background:var(--panel-2); border:1px solid var(--line-strong); border-radius:8px; padding:13px 14px; }
+  .kpi .kv{ font-family:var(--font-display); font-size:26px; }
+  .kpi .kl{ font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.6px; margin-top:2px; }
+  .kpi .kt{ font-family:var(--font-mono); font-size:9px; color:var(--text-dimmer); margin-top:4px; }
+
+  .status-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(100px,1fr)); gap:8px; margin-bottom:16px; }
+  .status-cell{ background:var(--panel-2); border:1px solid var(--line-strong); border-radius:8px; padding:11px; text-align:center; cursor:pointer; font-family:inherit; }
+  .status-cell:hover{ border-color:var(--amber); }
+  .status-cell.active{ border-color:var(--amber); background:var(--amber-dim); }
+  .status-cell .sv{ font-family:var(--font-display); font-size:22px; }
+  .status-cell .sl{ font-family:var(--font-mono); font-size:8.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.4px; margin-top:2px; }
+
+  table.reg tbody tr{ cursor:pointer; }
+  table.reg tbody tr:hover{ background:var(--panel-2); }
+
+  .modal-overlay{ position:fixed; inset:0; background:rgba(6,10,18,0.45); z-index:1000; display:none; align-items:center; justify-content:center; padding:20px; }
+  .modal-overlay.open{ display:flex; }
+  .modal-box{ background:var(--panel); border:1px solid var(--line-strong); border-radius:12px; width:100%; max-width:540px; max-height:82vh; overflow-y:auto; padding:22px; box-shadow:0 24px 60px rgba(10,40,80,0.18); }
+  .modal-box .mb-close{ float:right; background:transparent; border:none; color:var(--text-dim); font-size:20px; cursor:pointer; line-height:1; padding:0 2px; }
+  .modal-box .mb-close:hover{ color:var(--text); }
+  .modal-box h2{ font-family:var(--font-display); font-size:20px; margin:0 0 4px; }
+  .modal-box .mb-sub{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-bottom:14px; }
+  .detail-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:16px; }
+  .detail-item{ background:var(--panel-2); border:1px solid var(--line-strong); border-radius:8px; padding:10px 12px; }
+  .detail-item .k{ font-family:var(--font-mono); font-size:9px; color:var(--text-dimmer); text-transform:uppercase; letter-spacing:0.6px; }
+  .detail-item .v{ font-family:var(--font-mono); font-size:13px; color:var(--text); margin-top:2px; }
+  .timeline .ev{ display:grid; grid-template-columns:96px auto 1fr; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); align-items:start; }
+  .timeline .ev:last-child{ border-bottom:none; }
+  .timeline .ev .ts{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dimmer); padding-top:2px; }
+  .timeline .ev .dotcol{ display:flex; justify-content:center; }
+  .timeline .ev .dotcol span{ width:7px; height:7px; border-radius:50%; margin-top:6px; background:var(--amber); display:block; }
+  .timeline .ev .body{ font-size:12.5px; color:var(--text); }
+  .timeline .ev .body .op{ font-family:var(--font-mono); font-size:10px; color:var(--text-dim); margin-top:2px; }
+
+  .map-wrap{ background:var(--panel-2); border:1px solid var(--line-strong); border-radius:8px; padding:14px; margin-bottom:16px; }
+  .map-wrap svg{ width:100%; height:auto; display:block; }
+  #leafletMap{ width:100%; height:420px; border-radius:6px; z-index:1; }
+  .leaflet-popup-content{ font-family:var(--font-body); font-size:12.5px; }
+  .leaflet-popup-content b{ font-family:var(--font-display); }
+  .map-legend{ display:flex; gap:14px; margin-top:8px; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); flex-wrap:wrap; }
+  .map-legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .map-legend i{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  .export-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .exception-row{ display:grid; grid-template-columns:90px 1fr auto; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); align-items:center; font-size:12px; }
+  .exception-row .ex-ts{ font-family:var(--font-mono); font-size:10px; color:var(--text-dimmer); }
+  .exception-row .ex-type{ font-family:var(--font-mono); font-size:9px; color:var(--red); text-transform:uppercase; letter-spacing:0.6px; }
+
+  .refresh-note{ font-family:var(--font-mono); font-size:10px; color:var(--text-dimmer); display:flex; align-items:center; gap:6px; }
+  .pulse{ width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel-2); border:1px solid var(--green); color:var(--green); font-family:var(--font-mono); font-size:12px; padding:10px 18px; border-radius:8px; z-index:999; box-shadow:0 10px 26px rgba(0,0,0,0.4); opacity:0; pointer-events:none; transition:opacity .2s,transform .2s; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+  .toast.err{ border-color:var(--red); color:var(--red); }
+  footer{ text-align:center; margin-top:30px; font-family:var(--font-mono); font-size:9.5px; letter-spacing:1px; color:var(--text-dimmer); }
+  .empty-note{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dimmer); padding:8px 0; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="assetModal">
+  <div class="modal-box" id="assetModalBox"></div>
+</div>
+
+<div id="scanOverlay" style="position:fixed;inset:0;background:rgba(6,10,18,0.92);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--panel);border:1px solid var(--line-strong);border-radius:10px;width:100%;max-width:440px;padding:16px;">
+    <h3 style="font-family:var(--font-display);font-size:18px;margin:0 0 4px;">Scan barcode</h3>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-bottom:10px;">Point the camera at the asset barcode.</div>
+    <div style="position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:6px;overflow:hidden;border:1px solid var(--line-strong);">
+      <video id="scanVideo" muted playsinline style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+    </div>
+    <div id="scanStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:10px;min-height:16px;"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px;"><button class="btn sm" id="scanCancel">Cancel</button></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+/* =====================================================================
+   TFS LOGISTICS — back-office app: Dashboard + Asset Registry.
+   No touch-point scanning here — that lives in the separate TFS Logistics Scan
+   app for phones/handhelds. Shares the same localStorage state, so on
+   the same device the two apps stay in sync.
+   ===================================================================== */
+
+const ASSET_TYPES = ['Rolltainer','Hyper Cage'];
+const DC_SITES = ['JHB-DC1','JHB-DC3','CPT-DC1','CPT-DC3','DBN-DC1'];
+const HUB_SITES = ["Alberton (ALB)","Heidelberg (OLD) (HBG)","Nigel (OLD) (NGL)","Vosloorus Food (VRS)","Amanzimtoti (AMZ)","Ballito (BA2)","Ballito eBike (B22)","Mandini (MDI)","Salt Rock (SRK)","Stanger (STR)","Tongaat (TGT)","Verulam (VLM)","Zinkwazi (ZIN)","Ballito Central (BLT)","Bedfordview (BFV)","Benmore Gardens (BMG)","Benoni (BEN)","Brakpan (BPN)","Daveyton (DVT)","KwaThema (KTA)","Springs (SPR)","Tsakane (TSA)","Berea (ELB)","Bethlehem (BET)","Bethlehem eBike (B2T)","Clarens (CLA)","Ficksburg (FCK)","Frankfort (FNK)","Harrismith (OLD) (HRR)","Ladybrand (OLD) (LDB)","Senekal (SEN)","BKB Ermelo (BKE)","BKB Standerton (BST)","Bloemfontein (BLO)","Bloemfontein Edge (BLM)","Brandfort (BDT)","Mangaung (MNG)","Thaba Nchu (TBN)","Virginia (VIR)","Welkom (OLD) (WKM)","Bloemfontein Generaal De Wet (BMU)","Brackenfell (BRA)","Kuils River (OLD) (KUI)","Bredasdorp (BRE)","Caledon (CDN)","Gansbaai (GAN)","Hermanus (HMC)","L'Agulhas (LAG)","Swellendam (SWD)","Witsand (WSD)","Bredasdorp Square (BRD)","Bryanston (BRY)","Camps Drift (PMZ)","Canal Walk (CNW)","Carletonville (CTV)","Kagiso (KAG)","Centurion (CEN)","Centurion Mall Food (CNM)","Irene (IRN)","Lyttelton (LTN)","Midfields (MDE)","Midstream (MDM)","Rooihuiskraal (RHK)","Centurion Mall (CNT)","CNT TALNow Darkstore (C2N)","Bluff (BLU)","Chatsworth (CHW)","Chatsworth eBike (C2W)","Queensburgh (QUE)","Umlazi (UML)","Courier IT LH (CIL)","Colesberg (CLB)","Colesberg Direct (B99)","Gariepdam (GRD)","Philippolis (PHP)","Richmond - NC (RCH)","Steynsburg (SBG)","Constantia (CON)","Grassy Park (GRP)","Hout Bay (HTB)","CON TALNow Darkstore (C2O)","Courier IT (CIT)","CPT Direct 1 (CT1)","CPT Direct 10 (C10)","CPT Direct 11 (C11)","CPT Direct 2 (CT2)","CPT Direct 3 (CT3)","CPT Direct 4 (CT4)","CPT Direct 5 (CT5)","CPT Direct 6 (CT6)","CPT Direct 7 (CT7)","CPT Direct 8 (CT8)","CPT Direct 9 (CT9)","CT Dispatch WG (C90)","CPT Direct 99 (C99)","CPT Direct Fulfillment (CTD)","Cresta (CRE)","Randburg (RAN)","Dainfern (DNF)","Douglasdale (DGD)","DPD Laser (DPD)","Dundee (OLD) (DUN)","East London (EAS)","Gonubie (GON)","Greenfields (GRE)","King Williams Town (KWT)","Southernwood (SNW)","Boksburg (BKS)","East Rand Mall (ERM)","Standerton (OLD) (STN)","Balfour (BFR)","EC Direct 1 (EC1)","EC Direct 10 (E10)","EC Direct 11 (E11)","EC Direct 12 (E12)","EC Direct 2 (EC2)","EC Direct 3 (EC3)","EC Direct 4 (EC4)","EC Direct 5 (EC5)","EC Direct 6 (EC6)","EC Direct 7 (EC7)","EC Direct 8 (EC8)","EC Direct 9 (EC9)","EC Direct 99 (E99)","EC Direct Fulfillment (ECD)","Bedfordview (OLD) (BED)","Edenvale (EDE)","EDE TALNow Darkstore (E2E)","Elgin Mall (EGN)","Bethal (BTL)","Carolina (CRL)","Ermelo (EML)","Piet Retief (PTR)","Standerton (STA)","Faerie Glen (FRG)","FAST AND FURIOUS (FNF)","Firgrove (FIR)","FNB City (FBC)","Fordsburg (CAR)","Fordsburg Square (CFS)","Melville EXP (MEL)","Foreshore (HOH)","Foreshore 1 (HO1)","Fourways (FOU)","Diepsloot (DPS)","Gardens (GAR)","Seapoint (SEA)","Gateway (GAT)","Gateway eBike (G2T)","KwaMashu (KWM)","Newlands West (NLW)","Phoenix (PHX)","Umdloti (UMD)","George (GEO)","Herolds Bay (HRB)","Knysna (KNY)","Mossel Bay (OLD) (MOS)","Oudtshoorn (ODS)","Plettenberg Bay (PBB)","Prince Albert (PRA)","Sedgefield (SED)","Wildernis (WIL)","Germiston (GMS)","Germiston Food (GER)","Graaff-Reinet (GRR)","Cradock (CRA)","Bathurst (BAT)","Boesmansriviermond (BMR)","Grahamstown (GRA)","Port Alfred (PAL)","Harrismith (HRS)","Harrismith eBike (H2S)","Phuthaditjhaba (PHU)","Warden (WDN)","Winterton (WTN)","Hatfield (HAT)","Hatfield North (HTN)","Pretoria Central (PTC)","Heidelberg (HEI)","Nigel (NIG)","Hermanstad (HMS)","Hermanus Central (HMN)","Hilton (HLN)","Howick (HOK)","Hillcrest Oxford (HLC)","Howard College Campus (HCC)","JHB Direct 1 (JB1)","JHB Direct 10 (J10)","JHB Direct 11 (J11)","JHB Direct 12 (J12)","JHB Direct 13 (J13)","JHB Direct 14 (J14)","JHB Direct 15 (J15)","JHB Direct 16 (J16)","JHB Direct 2 (JB2)","JHB Direct 3 (JB3)","JHB Direct 4 (JB4)","JHB Direct 5 (JB5)","JHB Direct 6 (JB6)","JHB Direct 7 (JB7)","JHB Direct 8 (JB8)","JHB Direct 9 (JB9)","JHB Dispatch WG (J90)","JHB Direct 99 (J99)","JHB Direct Fulfillment (JBD)","JS Direct 1 (JS1)","JS Direct 2 (JS2)","JS Direct 3 (JS3)","JS Direct 4 (JS4)","JS Direct 5 (JS5)","JS Direct 6 (JS6)","JS Direct 7 (JS7)","JS Direct 8 (JS8)","JS Direct 9 (JS9)","JS Direct WG (S90)","JS Direct 99 (S99)","JS Direct Fulfillment (JSD)","Hotazel (HOT)","Kathu (KAT)","Kuruman (KUR)","Lime Acres (LIM)","Postmasburg (PST)","Kempton Park (KEM)","Athlone (ATH)","Kenilworth (KEN)","Mitchells Plain (MPL)","Barkly West (BKL)","Bloemhof (BHF)","Christiana (CHR)","Douglas (DGL)","Hartswater (HAR)","Jan Kempdorp (JAN)","Kimberley (KIM)","Kimberley eBike (K2M)","Petrusburg (PTB)","Schweizer-Reneke (SCH)","Vryburg (VRY)","Warrenton (WAR)","Kingfisher (KNF)","Klerksdorp (KLD)","Orkney (ORK)","Bothaville (OLD) (BTV)","Wolmaransstad (WOL)","Knysna Central (KNA)","Harding (HRD)","Ixopo (IXP)","Kokstad (KSD)","Kokstad Direct (O99)","Kokstad (L) (KS1)","Matatiele (MTL)","Mthatha (KSD) (MTA)","Port Edward (PED)","Port St Johns (PSJ)","Kroonstad (KRO)","Bothaville (BOT)","Kuils River (KLR)","KZN Direct 1 (KZ1)","KZN Direct 2 (KZ2)","KZN Direct 3 (KZ3)","KZN Direct 4 (KZ4)","KZN Direct 5 (KZ5)","KZN Direct 6 (KZ6)","KZN Direct 7 (KZ7)","KZN Direct 8 (KZ8)","KZN Dispatch WG (K90)","KZN Direct 99 (K99)","KZN Direct Fulfillment (KZD)","Hobhouse (HBS)","Ladybrand (LDY)","Marquard (MQD)","Rouxville (RXV)","Lenasia (LNA)","Lenasia South (LSO)","Lephalale (LPL)","Marapong (MRP)","Swartwater (SWA)","Thabazimbi (THA)","Vaalwater (VAA)","Little Falls (LTF)","Giyani (GIY)","Louis Trichardt (LTR)","Musina (MUS)","Thohoyandou (THO)","LP Direct 1 (LP1)","LP Direct 2 (LP2)","LP Direct 3 (LP3)","LP Direct 4 (LP4)","LP Direct 5 (LP5)","LP Direct 6 (LP6)","LP Direct 7 (LP7)","LP Direct 8 (LP8)","LP Direct 9 (LP9)","LP Direct 99 (L99)","LP Direct Fulfillment (LPD)","Lynnwood (LNW)","Meyerspark (MRK)","Lichtenburg (LTB)","Mafikeng (MFK)","Zeerust (hub) (ZRT)","Abbotsdale (ABB)","Atlantis (ATL)","Brittania Bay (BBA)","Chatsworth WC (CHA)","Darling (DLG)","Gouda (GOU)","Hopefield (HOP)","Kalbaskraal (KAL)","Koringberg (KOR)","Langebaan (LGB)","Langebaanweg (LBA)","Malmesbury (MAL)","Moorreesburg (MRB)","Paternoster (PAT)","Philadelphia (PIL)","Piketburg (PIK)","Porterville (PTV)","Riebeeck Kasteel (RKA)","Riebeeck West (RWE)","Saldanha (SLD)","Saron (SAR)","St Helena Bay (SHB)","Tierfontein (TIE)","Velddrif (VEL)","Vredenburg (VRE)","Yzerfontein (YZF)","Mamelodi (MAM)","Mamelodi West (MMF)","Margate (MGT)","Mbombela (MBB)","Mbombela 1 (MB1)","Mbombela 2 (MB2)","Mbombela 3 (MB3)","Mbombela 4 (MB4)","Mbombela 5 (MB5)","Mbombela 6 (MB6)","Mbombela 7 (MB7)","Mbombela 8 (MB8)","Mbombela 9 (MB9)","Mbombela 99 (M99)","Melville TPP (MLV)","Bronkhorstspruit (BHS)","Cullinan (CUL)","Menlyn (LYN)","Mooikloof (MKF)","Rayton (RAY)","Meyerton (MEY)","Groblersdal (GDL)","Groblersdal (OLD) (GBD)","Mhluzi (MHL)","Middelburg (MLG)","Midrand (MID)","Waterfall (WAT)","Midrand (N1 Bridge) (NRD)","Milnerton (MIL)","Bela Bela (BEB)","Modimolle (MOD)","Mookgopong (MPG)","Montana (MON)","Bluff (OLD) (BLF)","Chatsworth (OLD) (CTW)","Morningside (BER)","BER TALNow Darkstore (B2R)","Chesterville (CHE)","Kloof (KLO)","Umbilo (UMB)","Westville (Hub) (WSV)","Calitzdorp (CZD)","Dana Bay (DNB)","Groot Brak (GBR)","Mossel Bay (MSB)","Riversdale (RVD)","Still Bay (STB)","Mthatha (MTH)","Multichoice (MTC)","Goodwood (GWD)","N1 City / Parow (PAR)","NC Direct 1 (NC1)","NC Direct 2 (NC2)","NC Direct 3 (NC3)","NC Direct 4 (NC4)","NC Direct 5 (NC5)","NC Direct 6 (NC6)","NC Direct 7 (NC7)","NC Direct 8 (NC8)","NC Direct 9 (NC9)","NC Direct 99 (N99)","NC Direct Fulfilment (NCD)","Barberton (BAR)","Hazyview (HZV)","Komatipoort (KMP)","Lydenburg (LYD)","Machadodorp (MCH)","Nelspruit (NEL)","Nelspruit eBike (N2L)","Sabie (SAB)","White River (WHI)","New Era Springs (NER)","Duduza (DDZ)","Newcastle Central (NWC)","Dundee (DNE)","Ladysmith (LAD)","Nqutu (NQU)","Newcastle (NCS)","Madadeni (MDD)","Paulpietersburg (PPB)","Volksrust (VKR)","Vrede (VDE)","Vryheid (VHD)","Noordhoek (NDH)","Cosmo City (CMC)","Northgate (NGT)","Norwood (NOR)","Ottery (OTT)","Ashton (ASH)","Ceres (CER)","Montagu (MOG)","Paarl (PAA)","Paarl South (PAS)","Rawsonville (RAW)","Robertson (ROB)","Wellington (WEL)","Worcester (Hub) (WOR)","Amanzimtoti (OLD) (AMA)","Amanzimtoti eBike (A2A)","Creighton (CRN)","Kingsburgh (KIN)","Margate EXP (MAR)","Park Rynie (PKR)","Pennington (PEN)","Port Shepstone (PSH)","Scottburgh (SCO)","Umkomaas (UMK)","Umzinto (UMZ)","Burgersfort (BGF)","Bushbuckridge (BBR)","Hoedspruit (HDP)","Phalaborwa (PLB)","Pick n Pay Beacon Bay (PBE)","Pick n Pay Bethal (PBT)","Pick n Pay Local Chamdor (PCD)","Pick n Pay Chilli Lane (PCL)","Pick n Pay Chris Hani (PCH)","Pick n Pay Claremont (PCM)","Pick n Pay Constantia* (PCS)","Pick n Pay Daveyton Mall (PDM)","Pick n Pay Eerste River (PER)","Pick n Pay Fleurhof Mall (PFL)","Pick n Pay Festival Mall (PFM)","Pick n Pay Glen Garry (PGG)","Pick n Pay Gonubie (PGO)","Pick n Pay Hyper Brackenfell (PHB)","Pick n Pay Hyper Centurion (PHC)","Pick n Pay Hyper Durban North (PHD)","Pick n Pay Hyper Greenstone (PGS)","Pick n Pay Hyper Montana (PHM)","Pick n Pay Hyper Northgate (PNO)","Pick n Pay Hyper Norwood (PHN)","Pick n Pay Hyper Steeldale (PHS)","Pick n Pay Hyper Wonderpark (PWP)","Pick n Pay Hyper Woodmead (PWM)","Pick n Pay Irene Village Mall (PIV)","Pick n Pay Kensington (PKE)","Pick n Pay Key West (PKW)","Pick n Pay Killarney (PKL)","Pick n Pay KwaMnyandu (PUM)","Pick n Pay Kyalami (PKM)","Pick n Pay Linton Corner (PLC)","Pick n Pay Mall at Reds (PMR)","Pick n Pay Mall of Africa (PMA)","Pick n Pay Menlyn Park (PMP)","Pick n Pay Pinelands* (PPL)","Pick n Pay Plattekloof (PPK)","Pick n Pay Promenade (PPM)","Pick n Pay Queensburgh (PQB)","Pick n Pay Ruimsig (PRU)","Pick n Pay Stellenbosch (PSB)","Pick n Pay TableBay Mall (PTM)","Pick n Pay Tembisa (PTE)","Pick n Pay Tshwane Mall (PTS)","Pick n Pay Vangate Mall (PVM)","Pick n Pay Waterfall Mal (PWF)","Pick n Pay Waterfront (PVA)","Balgowan (BAL)","Cato Ridge (CTR)","Dalton (DAL)","Edendale / Imbali (IMB)","Estcourt (EST)","Greytown (GRT)","Hilton EXP (HIL)","Howick EXP (HOW)","Mooi River (MOI)","New Hanover (NHN)","Northdale (NDE)","Northern Park eBike (P3E)","Nottingham Road (NOT)","Pietermaritzburg (PIE)","Raisethorpe eBike (P2E)","Richmond (RMD)","Rosetta (RST)","Scottsville (SVE)","Scottsville eBike (S2E)","Underberg (UND)","Wartburg (WRT)","Pineslopes (PIN)","Hillcrest (HCT)","Pinetown (PNT)","Pinetown eBike (P2T)","Plumstead (PLU)","Dendron (DEN)","Hoedspruit (OLD) (HDS)","Lebowakgomo (LEB)","Letsitele (LET)","Mankweng (MAN)","Mokopane (MOK)","Phalaborwa (OLD) (PHA)","Polokwane (POL)","Seshego (SES)","Tzaneen (TZA)","Pongola (PNG)","Pongola 1 (PN1)","Pongola 2 (PN2)","Pongola 3 (PN3)","Pongola 4 (PN4)","Pongola 5 (PN5)","Pongola 99 (P99)","Baywest (BAY)","Bethelsdorp (BTD)","Humansdorp (OLD) (HUM)","Ibhayi (IBY)","Jeffreys Bay (OLD) (JEF)","North End/Korsten (KRN)","Port Elizabeth (NEW)","St Francis Bay (OLD) (STF)","Summerstrand (Hub) (SUM)","Uitenhage (OLD) (UIT)","Klerksdorp (OLD) (KLE)","Kroonstad (OLD) (KST)","Parys (PRS)","Potchefstroom (POT)","Ventersdorp (VTD)","Alexandra (AXD)","Atteridgeville (ATT)","Laudium (LAU)","Pretoria West (PTW)","Tembisa West (TBW)","Aliwal North (ALN)","Butterworth (BTW)","East London (L) (EAL)","Lady Grey (LDG)","Maclear (MCL)","Middelburg Cape (MBC)","Mthatha (QTN) (MTT)","Queenstown Direct (Q99)","Queenstown (QTN)","Mohlakeng (MHK)","Randfontein (RDF)","Randpark Ridge (RPR)","Retreat (RET)","Empangeni (EMP)","Eshowe (ESH)","Esikhawini (ESK)","Hluhluwe (HLU)","Meer N See (MNS)","Ngwelezane (NGZ)","Richards Bay (RBY)","Richards Bay eBike (R2Y)","St Lucia (STL)","Richmond Park (CTC)","Rivonia / Sunninghill (RIV)","Rondebosch (RON)","Rosebank (ROS)","Brits (BRI)","Hartbeespoort (HBP)","Hartbeespoort South (HTS)","Mooinooi (MNI)","Phokeng (PHO)","Rustenburg (RUS)","Sun City (SUN)","Sandown (SDN)","Sandton (SAN)","Evander (EVD)","Secunda (SEC)","Somerset Mall (SWE)","Bettys Bay (BBY)","Eerste Rivier (EES)","Grabouw (GRB)","Hermanus (OLD) (HER)","Kleinmond (KMD)","Pringle Bay (PBY)","Rooiels (REL)","Somerset West (SOM)","Southern Paarl (SPL)","Lenasia (OLD) (LEN)","Lenasia South (OLD) (LNS)","Southern Suburbs (SOU)","Dobsonville (DBS)","Eldorado Park (ELD)","Fochville (FHV)","Jabulani (JAB)","Protea Glen (PGN)","Soweto (SOW)","Westonaria (WNR)","Alexander Bay (ALX)","Garies (GRS)","Kleinsee (KLS)","O'Kiep (OKP)","Pofadder (PFD)","Port Nolloth (PNL)","Sanddrift (SND)","Springbok Direct (R99)","Springbok (SPB)","Vioolsdrif (VIO)","Durban North (DNN)","Springfield (SFD)","Franschhoek (FRA)","Stellenbosch (STE)","Stikland TALNow Darkstore (S2K)","Summerstrand (SMD)","Sunward Park (SWP)","Melkbosstrand (MBS)","Tableview (TAB)","TAL Returns (TAL)","Tembisa (TMB)","Tembisa South (TMS)","TFS SC Eastport (ESP)","TFS SC Olifantsfontein (OFT)","The Towers Boksburg (BKT)","Fish Hoek (FIS)","Noordhoek (OLD) (NDK)","Tokai (TOK)","Tygervalley (TYG)","Jeffreys Bay (JBY)","Uitenhage (UTN)","Umhlanga (UMH)","Kakamas (KKM)","Prieska (PRI)","Upington (UPT)","Evaton (EVT)","Meyerton (OLD) VDB (MRT)","Sasolburg (SAS)","Orange Farm (ORF)","Three Rivers (THR)","Vanderbijlpark (VDB)","VDB Farms (VDF)","Meyerton (OLD) (MYT)","Vereeniging (VER)","Vital (VDS)","Vosloorus (VOS)","Sky City (SKC)","Calvinia (CAL)","Citrusdal (CDL)","Lamberts Bay (LAM)","Lutzville (LZV)","Springbok (OLD) (SBK)","Vredendal (VDL)","Walmer (WAL)","Waterkloof Lifestyle Centre (WLC)","Hoopstad (HPS)","Theunissen (TNS)","Welkom (WLK)","Roodepoort (RDP)","Weltevreden Park (WTV)","Weltevreden Park Hillfox (WTP)","Krugersdorp (KRU)","Randfontein (Hub) (RND)","Ruimsig (RUI)","Westrand (WGT)","Westville (WES)","Westville Campus (WVC)","White River Bahati (WTR)","Ackerville (ACK)","Duvha (DUV)","Witbank (WIT)","Witbank ebike (W2T)","WITS Students & Staff (WTC)","Hammanskraal (HAM)","Mabopane (MBP)","Pretoria North (PTN)","Roodeplaat (RDT)","Thorntree View (TTV)","Wonderboom (WNB)","Woodstock (WDS)","Worcester (WST)","Zeerust (ZEE)","Booysens Reserve","Bramley","Centurion Old Mint Park","Chiselhurst","Diep River","Fontainebleau","Hunters Retreat","Kya Sands","Lyndhurst","Moreleta Park","Mount Edgecombe","North Beach","Northfield","Parklands","Pinelands","Sunnyside"];
+const RETURNS_SITES = ['Returns Facility — Isando'];
+const GLS_SITES = ['GLS Johannesburg','GLS Cape Town'];
+
+const TP_META = [
+  { seq:1, title:'DC Dispatch Open', location:'Distribution Centre', what:'Asset is scanned as it leaves the DC for dispatch' },
+  { seq:2, title:'DC Dispatch Close', location:'Distribution Centre', what:'Dispatch manifest is closed — all assets confirmed loaded' },
+  { seq:3, title:'TDT Dispatch Intake', location:'TDT Vehicle', what:'Driver scans assets as they are loaded onto the TDT vehicle' },
+  { seq:4, title:'TDT Dispatch Loaded', location:'TDT Vehicle', what:'Driver confirms all assets loaded — dispatch complete' },
+  { seq:5, title:'Hub Intake', location:'Hub / Vendor Site', what:'Assets are scanned on arrival at the hub or vendor site' },
+  { seq:6, title:'Hub Empty Collection', location:'Hub / Vendor Site', what:'Empty assets are scanned as they are collected for return' },
+  { seq:7, title:'DC Return Receipt', location:'Distribution Centre', what:'Returned assets are scanned back into the DC — cycle complete' },
+];
+
+// Non-linear lifecycle flows, outside the standard DC-to-hub-to-DC loop
+const SITE_COORDS = {"Alberton (ALB)":[-26.268,28.1226],"Amanzimtoti (AMZ)":[-30.0544,30.8794],"Ballito (BA2)":[-29.539,31.214],"Ballito Central (BLT)":[-29.539,31.214],"Bedfordview (BFV)":[-26.1809,28.1275],"Benmore Gardens (BMG)":[-26.1013,28.0567],"Benoni (BEN)":[-26.1885,28.3208],"Bethlehem (BET)":[-28.2308,28.3078],"Bloemfontein (BLO)":[-29.0852,26.1596],"Brackenfell (BRA)":[-33.8869,18.6994],"Bredasdorp Square (BRD)":[-34.5322,20.0428],"Centurion Mall (CNT)":[-25.8603,28.1894],"Chatsworth (CHW)":[-29.9186,30.8875],"Dainfern (DNF)":[-25.9989,27.9897],"Douglasdale (DGD)":[-26.0397,28.0028],"Edenvale (EDE)":[-26.142,28.1494],"Elgin Mall (EGN)":[-26.0906,28.2323],"Ermelo (EML)":[-26.533,29.9864],"Firgrove (FIR)":[-34.0642,18.7947],"FNB City (FBC)":[-26.2023,28.0436],"Fordsburg (CAR)":[-26.2041,28.0272],"Foreshore (HOH)":[-33.9163,18.429],"George (GEO)":[-33.9628,22.461],"Germiston (GMS)":[-26.2309,28.1751],"Grahamstown (GRA)":[-33.3111,26.5328],"Harrismith (HRS)":[-28.2739,29.1319],"Hermanus (HMC)":[-34.4187,19.2345],"Hilton (HLN)":[-29.5497,30.2839],"Hillcrest Oxford (HLC)":[-29.7833,30.7333],"Howard College Campus (HCC)":[-29.8677,30.98],"Kathu (KAT)":[-27.6944,23.0453],"Kempton Park (KEM)":[-26.1017,28.2306],"Kimberley (KIM)":[-28.7382,24.7633],"Kingfisher (KNF)":[-26.017,28.0089],"Klerksdorp (KLD)":[-26.8523,26.6668],"Knysna Central (KNA)":[-34.0363,23.0471],"Ladybrand (LDY)":[-29.1908,27.4553],"Lenasia (LNA)":[-26.3369,27.8542],"Lephalale (LPL)":[-23.6689,27.7392],"Little Falls (LTF)":[-26.1197,27.8956],"Louis Trichardt (LTR)":[-23.0439,29.9022],"Mafikeng (MFK)":[-25.856,25.6403],"Malmesbury (MAL)":[-33.4608,18.7264],"Mamelodi (MAM)":[-25.7061,28.3706],"Middelburg (MLG)":[-25.7754,29.4644],"Midrand (MID)":[-25.9892,28.1289],"Midrand (N1 Bridge) (NRD)":[-25.9892,28.1289],"Milnerton (MIL)":[-33.8664,18.5108],"Modimolle (MOD)":[-24.6989,28.4083],"Pretoria North (PTN)":[-25.6797,28.1861],"Mossel Bay (MSB)":[-34.1831,22.1461],"Mthatha (MTH)":[-31.5889,28.7844],"N1 City / Parow (PAR)":[-33.9061,18.5842],"Mbombela (MBB)":[-25.4753,30.9694],"New Era Springs (NER)":[-26.2521,28.4408],"Newcastle (NCS)":[-27.758,29.9319],"Noordhoek (NDH)":[-34.1058,18.3775],"Ottery (OTT)":[-34.0031,18.5203],"Paarl (PAA)":[-33.7342,18.9622],"Park Rynie (PKR)":[-30.3444,30.7183],"Phalaborwa (PLB)":[-23.9425,31.1444],"Pick n Pay Bethal (PBT)":[-26.4536,29.455],"Pick n Pay Local Chamdor (PCD)":[-26.1256,27.7897],"Pick n Pay Chilli Lane (PCL)":[-26.0492,28.0631],"Pick n Pay Chris Hani (PCH)":[-26.3572,28.1875],"Pick n Pay Claremont (PCM)":[-33.9814,18.465],"Pick n Pay Constantia* (PCS)":[-34.0231,18.4292],"Pick n Pay Eerste River (PER)":[-33.8608,18.7166],"Pick n Pay Hyper Brackenfell (PHB)":[-33.8869,18.6994],"Pick n Pay Hyper Centurion (PHC)":[-25.8603,28.1894],"Pick n Pay Hyper Durban North (PHD)":[-29.7833,31.0333],"Pick n Pay Hyper Greenstone (PGS)":[-26.1275,28.1614],"Pick n Pay Hyper Montana (PHM)":[-25.7136,28.214],"Pick n Pay Hyper Northgate (PNO)":[-26.1372,27.9711],"Pick n Pay Hyper Norwood (PHN)":[-26.1611,28.0836],"Pick n Pay Hyper Steeldale (PHS)":[-26.2606,28.0894],"Pick n Pay Hyper Wonderpark (PWP)":[-25.6142,28.1319],"Pick n Pay Hyper Woodmead (PWM)":[-26.0472,28.0997],"Pick n Pay Key West (PKW)":[-26.1078,27.7669],"Pick n Pay Killarney (PKL)":[-26.1719,28.0453],"Pick n Pay Kyalami (PKM)":[-25.9836,28.0728],"Pick n Pay Linton Corner (PLC)":[-25.7828,28.3186],"Pick n Pay Mall of Africa (PMA)":[-26.025,28.1097],"Pick n Pay Pinelands* (PPL)":[-33.9364,18.5147],"Pick n Pay Plattekloof (PPK)":[-33.86,18.5675],"Pick n Pay Promenade (PPM)":[-34.0392,18.6167],"Pick n Pay Stellenbosch (PSB)":[-33.9364,18.8608],"Pick n Pay TableBay Mall (PTM)":[-33.8194,18.4956],"Pick n Pay Tembisa (PTE)":[-25.9964,28.2258],"Pick n Pay Tshwane Mall (PTS)":[-25.7167,28.3667],"Pick n Pay Vangate Mall (PVM)":[-33.9631,18.5039],"Pick n Pay Waterfront (PVA)":[-33.9036,18.4197],"Pietermaritzburg (PIE)":[-29.6006,30.3794],"Pineslopes (PIN)":[-26.017,28.0089],"Pinetown (PNT)":[-29.8149,30.8672],"Plumstead (PLU)":[-34.0089,18.4694],"Polokwane (POL)":[-23.9045,29.4689],"Potchefstroom (POT)":[-26.7145,27.0975],"Pretoria West (PTW)":[-25.7364,28.1594],"Randfontein (RDF)":[-26.1839,27.7033],"Randpark Ridge (RPR)":[-26.0836,27.9536],"Richards Bay (RBY)":[-28.7807,32.0383],"Richmond Park (CTC)":[-33.8981,18.5225],"Rivonia / Sunninghill (RIV)":[-26.0553,28.0567],"Rustenburg (RUS)":[-25.6672,27.2424],"Bryanston (BRY)":[-26.0553,28.0264],"Secunda (SEC)":[-26.5225,29.1739],"Somerset West (SOM)":[-34.0836,18.8433],"Paarl South (PAS)":[-33.7422,18.9642],"Soweto (SOW)":[-26.2678,27.8585],"Springfield (SFD)":[-29.8258,30.9989],"Stellenbosch (STE)":[-33.9364,18.8608],"Summerstrand (SMD)":[-33.995,25.6733],"Sunward Park (SWP)":[-26.2069,28.3178],"The Towers Boksburg (BKT)":[-26.21,28.2622],"Tygervalley (TYG)":[-33.8664,18.6289],"Uitenhage (UTN)":[-33.75,25.4136],"Umhlanga (UMH)":[-29.7267,31.0836],"Upington (UPT)":[-28.4478,21.2561],"Vanderbijlpark (VDB)":[-26.7086,27.8397],"Vereeniging (VER)":[-26.6736,27.9319],"Vosloorus (VOS)":[-26.3572,28.1875],"Vredendal (VDL)":[-31.6689,18.5011],"Walmer (WAL)":[-33.9861,25.6047],"Waterkloof Lifestyle Centre (WLC)":[-25.7833,28.25],"Welkom (WLK)":[-27.9789,26.7314],"Weltevreden Park Hillfox (WTP)":[-26.1394,27.8622],"Krugersdorp (KRU)":[-26.0997,27.7736],"Westville (WES)":[-29.8331,30.9264],"Westville Campus (WVC)":[-29.8258,30.9436],"White River Bahati (WTR)":[-25.3378,31.0164],"Witbank (WIT)":[-25.8728,29.2333],"WITS Students & Staff (WTC)":[-26.1925,28.0306],"Woodstock (WDS)":[-33.9297,18.4489],"Worcester (WST)":[-33.6464,19.4486],"Zeerust (ZEE)":[-25.5342,26.0817],"Centurion Old Mint Park":[-25.8603,28.1894],"Diep River":[-34.0242,18.4661],"Fontainebleau":[-26.1197,27.9772],"Chiselhurst":[-33.0192,27.8546],"Hunters Retreat":[-33.9608,25.5701],"Mount Edgecombe":[-29.6969,31.0442],"Sunnyside":[-25.7521,28.2039],"Northfield":[-29.755,31.035],"Moreleta Park":[-25.8397,28.2478],"North Beach":[-29.8547,31.035],"Kya Sands":[-26.0339,27.9403],"Lyndhurst":[-26.1508,28.1053],"Pinelands":[-33.9364,18.5147],"Bramley":[-26.1372,28.0794],"Booysens Reserve":[-26.2222,28.0181],"Parklands":[-33.81,18.4989],"DC Johannesburg 1":[-26.2041,28.0473],"DC Cape Town 1":[-33.9249,18.4241],"DC Durban 1":[-29.8587,31.0218],"JHB-DC1":[-26.2041,28.0473],"JHB-DC3":[-26.15,28.21],"CPT-DC1":[-33.9249,18.4241],"CPT-DC3":[-33.9715,18.6021],"DBN-DC1":[-29.8587,31.0218],"Returns Facility \u2014 Isando":[-26.1367,28.2264]};
+
+const WSW_META = [
+  { seq:1, title:'WSW Intake', location:'Distribution Centre', what:'Misrouted stock arriving from another DC is scanned in at Wrong Source Warehouse' },
+  { seq:2, title:'WSW Sort & Process', location:'Distribution Centre', what:'Sorted assets are released into active DC stock, ready for normal dispatch to hubs' },
+];
+
+const NONLINEAR_META = [
+  { title:'Damaged Asset Scan-Out', role:'TDT Clerk', what:'Scans a Rolltainer out as damaged/unusable, removing it from the active fleet for write-off or scrapping.' },
+  { title:'Maintenance Scan-Out / Scan-In', role:'Operator', what:'Scans a Rolltainer going to repair/service; scanned back in on repair, returning it to active fleet status.' },
+  { title:'GLS Vendor Custody', role:'Operator', what:'Scans Rolltainers transferred to a GLS third-party site (Johannesburg or Cape Town) and scans them back in on return.' },
+  { title:'Returns Facility Routing', role:'Driver', what:'Routes empty Rolltainers to a returns processing facility instead of the originating DC.' },
+  { title:'Inter-DC Transfer', role:'Operator', what:'Rebalances Rolltainer stock between DCs — scanned out of one DC and into another.' },
+];
+
+const STORE_KEY = 'mercury.app.state.v2'; // shared with the TFS Logistics Scan app
+
+function nowTs(){ return Date.now(); }
+function fmtTs(ts){ return ts ? new Date(ts).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'; }
+function daysSince(ts){ return Math.floor((nowTs()-ts)/86400000); }
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function uidManifest(prefix){ return prefix + '-' + String(Math.floor(100000+Math.random()*899999)); }
+
+/* ---------------- seed data (identical to the Scan app) ---------------- */
+function seedState(){
+  const t0 = nowTs();
+  const assets = [];
+  let n = 1;
+  function addAsset(type, dc, status, stage, extra){
+    const id = 'RT-' + String(100000+n).padStart(6,'0'); n++;
+    assets.push(Object.assign({
+      id, type, homeDC: dc, status, stage, outstanding:null,
+      manifestId:null, manifestKind:null, hubArrivalAt:null, custodyLog:[], transferTo:null,
+      registeredAt: t0 - 86400000*(30+Math.floor(Math.random()*300)),
+    }, extra||{}));
+    return assets[assets.length-1];
+  }
+  for(let i=0;i<10;i++) addAsset(i%2?'Rolltainer':'Hyper Cage', DC_SITES[i%DC_SITES.length], 'Available at DC', 0);
+
+  const manifests = [];
+  const exceptions = [];
+
+  const doneAssets = [addAsset('Rolltainer', DC_SITES[0], 'Available at DC', 0), addAsset('Hyper Cage', DC_SITES[0], 'Available at DC', 0)];
+  const doneManifest = { id: uidManifest('MAN'), kind:'dispatch', originDC: DC_SITES[0], destinationHub: HUB_SITES[33], // Bloemfontein
+    createdAt: t0 - 86400000*4, expected: doneAssets.map(a=>a.id), scanned:{}, unexpected:[], stage:5,
+    log:[], completedDispatch:true, returnManifestId:null };
+  manifests.push(doneManifest);
+  doneAssets.forEach(a=>{ a.custodyLog.push({note:'Full cycle completed (seed)', ts: t0 - 86400000*1}); });
+
+  const midAssets = [addAsset('Rolltainer', DC_SITES[0], 'Dispatched — In Transit', 2), addAsset('Rolltainer', DC_SITES[0], 'Dispatched — In Transit', 2), addAsset('Hyper Cage', DC_SITES[0], 'Dispatched — In Transit', 2)];
+  const midManifest = { id: uidManifest('MAN'), kind:'dispatch', originDC: DC_SITES[0], destinationHub: HUB_SITES[51], // Bryanston
+    createdAt: t0 - 3600000*6, expected: midAssets.map(a=>a.id), scanned:{}, unexpected:[], stage:2, log:[], completedDispatch:false, returnManifestId:null };
+  midAssets.forEach(a=>{ a.manifestId = midManifest.id; a.manifestKind='dispatch'; });
+  manifests.push(midManifest);
+
+  const hubAssets = [addAsset('Rolltainer', DC_SITES[1], 'At Hub: ' + HUB_SITES[153] /* George */, 5, { hubArrivalAt: t0 - 86400000*9 })];
+  const hubManifest = { id: uidManifest('MAN'), kind:'dispatch', originDC: DC_SITES[1], destinationHub: HUB_SITES[153], // George
+    createdAt: t0 - 86400000*10, expected: hubAssets.map(a=>a.id), scanned:{}, unexpected:[], stage:5, log:[], completedDispatch:true, returnManifestId:null };
+  hubAssets.forEach(a=>{ a.manifestId = hubManifest.id; a.manifestKind='dispatch'; });
+  manifests.push(hubManifest);
+
+  const missingAsset = addAsset('Hyper Cage', DC_SITES[2], 'Available at DC', 0);
+  missingAsset.outstanding = { reason:'Missed scan at Hub Intake (seed)', since: t0 - 86400000*2 };
+  exceptions.push({ ts: t0 - 86400000*2, type:'Missed Scan', assetId: missingAsset.id, note:'Expected at Hub Intake but not scanned within timeout.' });
+
+  // one of each non-linear state, so the dashboard and registry show them immediately
+  const damaged = addAsset('Hyper Cage', DC_SITES[0], 'Damaged / Written Off', 0);
+  damaged.custodyLog.push({ note:'Damaged Asset Scan-Out — cracked frame (seed)', ts: t0 - 86400000*3 });
+  const maint = addAsset('Rolltainer', DC_SITES[1], 'In Maintenance', 0);
+  maint.custodyLog.push({ note:'Maintenance Scan-Out — wheel replacement (seed)', ts: t0 - 86400000*1 });
+  const gls = addAsset('Rolltainer', DC_SITES[0], 'With GLS Vendor: ' + GLS_SITES[0], 0);
+  gls.custodyLog.push({ note:'GLS Vendor Custody — transferred (seed)', ts: t0 - 86400000*5 });
+  const transfer = addAsset('Hyper Cage', DC_SITES[2], 'Inter-DC Transfer to ' + DC_SITES[0], 0, { transferTo: DC_SITES[0] });
+  transfer.custodyLog.push({ note:'Inter-DC Transfer — scanned out (seed)', ts: t0 - 3600000*10 });
+
+  return { assets, manifests, exceptions, taggedFleet: 154, totalFleet: 200, session:null };
+}
+function loadState(){ try{ const raw = localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
+function saveState(){ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }
+
+let S = loadState() || seedState();
+if(!S.dcSites) S.dcSites = DC_SITES.slice();
+if(!S.hubSites) S.hubSites = HUB_SITES.slice();
+if(!S.returnsFacilities) S.returnsFacilities = RETURNS_SITES.slice();
+DC_SITES.length = 0; DC_SITES.push(...S.dcSites);
+HUB_SITES.length = 0; HUB_SITES.push(...S.hubSites);
+RETURNS_SITES.length = 0; RETURNS_SITES.push(...S.returnsFacilities);
+saveState();
+
+function siteArrayFor(kind){ return kind==='dc' ? S.dcSites : kind==='hub' ? S.hubSites : S.returnsFacilities; }
+function syncSiteArrays(){
+  DC_SITES.length = 0; DC_SITES.push(...S.dcSites);
+  HUB_SITES.length = 0; HUB_SITES.push(...S.hubSites);
+  RETURNS_SITES.length = 0; RETURNS_SITES.push(...S.returnsFacilities);
+}
+function addSite(kind, rawName){
+  const name = rawName.trim();
+  if(!name) return { ok:false, msg:'Enter a name.' };
+  const arr = siteArrayFor(kind);
+  if(arr.some(s=>s.toLowerCase()===name.toLowerCase())) return { ok:false, msg:'That site already exists.' };
+  arr.push(name);
+  syncSiteArrays();
+  saveState();
+  return { ok:true };
+}
+function siteInUse(name){
+  return S.assets.some(a=>a.homeDC===name || a.status===('At Hub: '+name) || a.transferTo===name) ||
+    S.manifests.some(m=> m.originDC===name || m.destinationHub===name || m.originHub===name || m.destinationDC===name);
+}
+function removeSite(kind, name){
+  if(siteInUse(name)) return { ok:false, msg:'In use by assets or manifests — can\'t remove.' };
+  const arr = siteArrayFor(kind);
+  const idx = arr.indexOf(name);
+  if(idx===-1) return { ok:false, msg:'Not found.' };
+  arr.splice(idx,1);
+  syncSiteArrays();
+  saveState();
+  return { ok:true };
+}
+
+let activeTab = 'dashboard';
+
+function findAsset(id){ return S.assets.find(a=>a.id.toLowerCase()===String(id).trim().toLowerCase()); }
+function findManifest(id){ return S.manifests.find(m=>m.id===id); }
+function statusChipClass(status){
+  if(status.startsWith('Available')) return 'c-idle';
+  if(status.startsWith('In Dispatch')) return 'c-active';
+  if(status.includes('In Transit')) return 'c-transit';
+  if(status.startsWith('At Hub')) return 'c-hub';
+  if(status.startsWith('At WSW')) return 'c-branch';
+  if(status.startsWith('Ready for Return')) return 'c-return';
+  if(status === 'Damaged / Written Off') return 'c-damaged';
+  if(status === 'In Maintenance' || status.startsWith('With GLS Vendor') || status.startsWith('Inter-DC Transfer')) return 'c-branch';
+  return 'c-idle';
+}
+function rollupStatus(asset){
+  if(asset.outstanding) return 'Outstanding';
+  if(asset.status.startsWith('Available')) return 'Available';
+  if(asset.status.startsWith('In Dispatch')) return 'In Dispatch';
+  if(asset.status.includes('In Transit')) return 'In Transit';
+  if(asset.status.startsWith('At Hub')) return 'At Hub';
+  if(asset.status.startsWith('At WSW')) return 'At WSW';
+  if(asset.status.startsWith('Ready for Return')) return 'Ready for Return';
+  if(asset.status === 'Damaged / Written Off') return 'Damaged';
+  if(asset.status === 'In Maintenance') return 'Maintenance';
+  if(asset.status.startsWith('With GLS Vendor')) return 'GLS Custody';
+  if(asset.status.startsWith('Inter-DC Transfer')) return 'Inter-DC Transfer';
+  return 'Available';
+}
+function showToast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (isErr?' err':'');
+  setTimeout(()=> t.className='toast', 2000);
+}
+
+/* --------------------------------------------------------------------- */
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <header class="top">
+      <div class="brand">
+        <div class="mark">TFS</div>
+        <div><h1>TFS LOGISTICS</h1><div class="sub">Dashboard &amp; Asset Registry</div></div>
+      </div>
+    </header>
+    <nav class="tabs" id="tabs">
+      <button data-tab="dashboard" class="${activeTab==='dashboard'?'active':''}">Dashboard</button>
+      <button data-tab="registry" class="${activeTab==='registry'?'active':''}">Asset Registry</button>
+    </nav>
+    <div id="tabContent">${ activeTab==='dashboard' ? renderDashboard() : renderRegistry() }</div>
+    <footer>TFS LOGISTICS — BACK-OFFICE VIEW — SCANNING HAPPENS IN THE TFS LOGISTICS SCAN APP</footer>
+  `;
+  document.getElementById('tabs').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-tab]'); if(!btn) return;
+    activeTab = btn.dataset.tab; render();
+  });
+  if(activeTab==='dashboard') bindDashboard();
+  if(activeTab==='registry') bindRegistry();
+}
+
+/* ---------------------------------------------------------------------
+   TAB: Asset Registry (slide 15)
+   --------------------------------------------------------------------- */
+function renderRegistry(){
+  const coveragePct = Math.round(S.taggedFleet / S.totalFleet * 100);
+  let html = `<div class="panel">
+    <h2>Step 1 — Barcode Label Application</h2>
+    <div class="desc">Every Rolltainer and Hyper Cage gets a unique barcode label added to the asset register before go-live. Each barcode encodes a unique asset ID linked to the registry in TFS Logistics.</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:14px;">
+      <div class="kpi"><div class="kv">${coveragePct}%</div><div class="kl">Tagging coverage</div><div class="kt">Baseline was 77% — target 100% before go-live</div></div>
+      <div class="kpi"><div class="kv">${S.taggedFleet} / ${S.totalFleet}</div><div class="kl">Assets registered</div><div class="kt">Process: physical audit → registry update → verification scan</div></div>
+    </div>
+    <h3>Register a new asset</h3>
+    <div class="filters">
+      <select id="regType">${ASSET_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+      <select id="regDC">${DC_SITES.map(d=>`<option value="${d}">${d}</option>`).join('')}</select>
+      <input id="regId" type="text" placeholder="Barcode (scan or type — leave blank to auto-generate)" style="font-family:var(--font-mono);min-width:260px;" />
+      <button class="btn" id="regCamBtn">⌗ Scan</button>
+      <button class="btn primary" id="regBtn">Register &amp; verify</button>
+    </div>
+  </div>`;
+
+  html += `<div class="panel">
+    <h2>Distribution Centres, Hubs &amp; Returns Facilities</h2>
+    <div class="desc">Onboard a new site before assigning assets or manifests to it.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+      <div>
+        <h3>Distribution Centres</h3>
+        <div class="filters">
+          <input id="newDCInput" type="text" placeholder="e.g. DC Bloemfontein 1" style="flex:1;" />
+          <button class="btn primary sm" id="addDCBtn">Add DC</button>
+        </div>
+        <div id="dcSiteList"></div>
+      </div>
+      <div>
+        <h3>Hubs / Vendor Sites</h3>
+        <div class="filters">
+          <input id="newHubInput" type="text" placeholder="e.g. Hub — Polokwane" style="flex:1;" />
+          <button class="btn primary sm" id="addHubBtn">Add Hub</button>
+        </div>
+        <div id="hubSiteList"></div>
+      </div>
+      <div>
+        <h3>Returns Facilities</h3>
+        <div class="filters">
+          <input id="newReturnsInput" type="text" placeholder="e.g. Returns Facility — Durban" style="flex:1;" />
+          <button class="btn primary sm" id="addReturnsBtn">Add</button>
+        </div>
+        <div id="returnsSiteList"></div>
+      </div>
+    </div>
+  </div>`;
+
+  html += `<div class="panel">
+    <h2>Asset registry</h2>
+    <div class="filters">
+      <input id="regSearch" type="search" placeholder="Search barcode…" />
+      <select id="regFilterType"><option value="">All types</option>${ASSET_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="reg"><thead><tr><th>Barcode</th><th>Type</th><th>Status</th><th>Home Site</th><th>Registered</th></tr></thead>
+        <tbody id="regTableBody"></tbody>
+      </table>
+    </div>
+  </div>`;
+  return html;
+}
+function siteListRowsHtml(kind, sites){
+  return sites.map(s=>{
+    const used = siteInUse(s);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:12px;">
+      <span>${escapeHtml(s)}</span>
+      <button class="btn sm" data-remove-site="${kind}" data-site-name="${escapeHtml(s)}" ${used?'disabled title="In use"':''}>Remove</button>
+    </div>`;
+  }).join('') || `<div class="empty-note">None yet.</div>`;
+}
+function bindRegistry(){
+  document.getElementById('regBtn').addEventListener('click', ()=>{
+    const type = document.getElementById('regType').value;
+    const dc = document.getElementById('regDC').value;
+    let id = document.getElementById('regId').value.trim();
+    if(!id){
+      const nums = S.assets.map(a=>{ const m=a.id.match(/RT-(\d+)/); return m?parseInt(m[1],10):0; });
+      id = 'RT-' + String((nums.length?Math.max(...nums):100000)+1).padStart(6,'0');
+    }
+    if(findAsset(id)){ showToast('Barcode already registered.', true); return; }
+    S.assets.push({ id, type, homeDC:dc, status:'Available at DC', stage:0, outstanding:null, manifestId:null, manifestKind:null, hubArrivalAt:null, custodyLog:[], registeredAt: nowTs() });
+    S.taggedFleet = Math.min(S.totalFleet, S.taggedFleet + 1);
+    saveState(); showToast('Registered ' + id);
+    render();
+  });
+  document.getElementById('regCamBtn').addEventListener('click', ()=>{
+    openScanner((text)=>{ document.getElementById('regId').value = text; showToast('Scanned: ' + text); });
+  });
+
+  document.getElementById('dcSiteList').innerHTML = siteListRowsHtml('dc', S.dcSites);
+  document.getElementById('hubSiteList').innerHTML = siteListRowsHtml('hub', S.hubSites);
+  document.getElementById('returnsSiteList').innerHTML = siteListRowsHtml('returns', S.returnsFacilities);
+  document.getElementById('addDCBtn').addEventListener('click', ()=>{
+    const input = document.getElementById('newDCInput');
+    const res = addSite('dc', input.value);
+    if(!res.ok){ showToast(res.msg, true); return; }
+    input.value = ''; showToast('DC added.'); render();
+  });
+  document.getElementById('addHubBtn').addEventListener('click', ()=>{
+    const input = document.getElementById('newHubInput');
+    const res = addSite('hub', input.value);
+    if(!res.ok){ showToast(res.msg, true); return; }
+    input.value = ''; showToast('Hub added.'); render();
+  });
+  document.getElementById('addReturnsBtn').addEventListener('click', ()=>{
+    const input = document.getElementById('newReturnsInput');
+    const res = addSite('returns', input.value);
+    if(!res.ok){ showToast(res.msg, true); return; }
+    input.value = ''; showToast('Returns facility added.'); render();
+  });
+  document.querySelectorAll('[data-remove-site]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const res = removeSite(btn.dataset.removeSite, btn.dataset.siteName);
+      if(!res.ok){ showToast(res.msg, true); return; }
+      showToast('Removed.'); render();
+    });
+  });
+
+  drawRegistryTable();
+  document.getElementById('regSearch').addEventListener('input', drawRegistryTable);
+  document.getElementById('regFilterType').addEventListener('change', drawRegistryTable);
+}
+function drawRegistryTable(){
+  const q = (document.getElementById('regSearch')||{value:''}).value.trim().toLowerCase();
+  const t = (document.getElementById('regFilterType')||{value:''}).value;
+  let rows = S.assets.filter(a=> (!q || a.id.toLowerCase().includes(q)) && (!t || a.type===t) );
+  rows = rows.slice().sort((a,b)=>a.id.localeCompare(b.id));
+  const body = document.getElementById('regTableBody');
+  body.innerHTML = rows.map(a=>`<tr data-asset-id="${escapeHtml(a.id)}">
+      <td style="font-family:var(--font-mono);font-weight:600;">${a.id}</td>
+      <td>${a.type}</td>
+      <td><span class="chip ${a.outstanding?'c-outstanding':statusChipClass(a.status)}"><span class="dot"></span>${a.outstanding ? 'Outstanding' : a.status}</span></td>
+      <td>${a.homeDC}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">${fmtTs(a.registeredAt)}</td>
+    </tr>`).join('') || `<tr><td colspan="5" class="empty-note">No matching assets.</td></tr>`;
+  body.querySelectorAll('tr[data-asset-id]').forEach(tr=>{
+    tr.addEventListener('click', ()=> openAssetDetail(tr.dataset.assetId));
+  });
+}
+
+/* ---------------------------------------------------------------------
+   Asset detail modal — full scan history / chain-of-custody
+   --------------------------------------------------------------------- */
+function openAssetDetail(assetId){
+  const asset = findAsset(assetId);
+  if(!asset) return;
+  const info = asset.outstanding ? { label:'Outstanding', cls:'c-outstanding' } : { label:asset.status, cls:statusChipClass(asset.status) };
+  const box = document.getElementById('assetModalBox');
+  let html = `<button type="button" class="mb-close" id="assetModalClose">×</button>
+    <h2>${escapeHtml(asset.id)}</h2>
+    <div class="mb-sub">${asset.type} · registered ${fmtTs(asset.registeredAt)}</div>
+    <div style="margin-bottom:14px;"><span class="chip ${info.cls}"><span class="dot"></span>${escapeHtml(info.label)}</span></div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Home site</div><div class="v">${escapeHtml(asset.homeDC)}</div></div>
+      ${asset.manifestId ? `<div class="detail-item"><div class="k">Active manifest</div><div class="v">${escapeHtml(asset.manifestId)}</div></div>` : ''}
+      ${asset.hubArrivalAt ? `<div class="detail-item"><div class="k">Hub arrival</div><div class="v">${fmtTs(asset.hubArrivalAt)}</div></div>` : ''}
+      ${asset.outstanding ? `<div class="detail-item"><div class="k">Outstanding reason</div><div class="v">${escapeHtml(asset.outstanding.reason)}</div></div>
+        <div class="detail-item"><div class="k">Outstanding since</div><div class="v">${fmtTs(asset.outstanding.since)} (${daysSince(asset.outstanding.since)}d)</div></div>` : ''}
+    </div>
+    <h3 style="margin-top:0;">Scan history</h3>
+    <div class="timeline">`;
+  if(!asset.custodyLog || asset.custodyLog.length===0){
+    html += `<div class="empty-note">No scan events logged yet.</div>`;
+  } else {
+    asset.custodyLog.slice().reverse().forEach(ev=>{
+      html += `<div class="ev">
+          <div class="ts">${fmtTs(ev.ts)}</div>
+          <div class="dotcol"><span></span></div>
+          <div class="body">${escapeHtml(ev.note)}${ev.operator ? `<div class="op">${escapeHtml(ev.operator)}</div>` : ''}</div>
+        </div>`;
+    });
+  }
+  html += `</div>`;
+  box.innerHTML = html;
+  document.getElementById('assetModal').classList.add('open');
+  document.getElementById('assetModalClose').addEventListener('click', closeAssetDetail);
+}
+function closeAssetDetail(){ document.getElementById('assetModal').classList.remove('open'); }
+document.getElementById('assetModal').addEventListener('click', (e)=>{ if(e.target.id==='assetModal') closeAssetDetail(); });
+
+/* ---------------------------------------------------------------------
+   TAB: Dashboard (slide 25)
+   --------------------------------------------------------------------- */
+function computeAvgCycleTime(){
+  const completed = S.manifests.filter(m=>m.kind==='return' && m.stage===7);
+  if(completed.length===0) return null;
+  let totalHrs = 0, count=0;
+  completed.forEach(rm=>{
+    const dispatch = S.manifests.find(dm=>dm.kind==='dispatch' && dm.expected.some(id=>rm.expected.includes(id)));
+    if(dispatch){ totalHrs += (rm.createdAt - dispatch.createdAt)/3600000; count++; }
+  });
+  return count ? Math.round(totalHrs/count) : null;
+}
+function renderDashboard(){
+  const rollups = { Available:0, 'In Dispatch':0, 'In Transit':0, 'At Hub':0, 'At WSW':0, 'Ready for Return':0, Outstanding:0, Damaged:0, Maintenance:0, 'GLS Custody':0, 'Inter-DC Transfer':0 };
+  S.assets.forEach(a=> rollups[rollupStatus(a)]++ );
+  const coveragePct = Math.round(S.taggedFleet / S.totalFleet * 100);
+  const avgCycle = computeAvgCycleTime();
+  const lossRate = Math.round((rollups.Outstanding / Math.max(1,S.assets.length)) * 1000)/10;
+  const excCount = S.exceptions.length;
+
+  const siteCounts = {};
+  [...DC_SITES, ...HUB_SITES, ...RETURNS_SITES].forEach(s=> siteCounts[s]=0 );
+  S.assets.forEach(a=>{
+    if(a.status.startsWith('At Hub:')) siteCounts[a.status.replace('At Hub: ','')] = (siteCounts[a.status.replace('At Hub: ','')]||0)+1;
+    else siteCounts[a.homeDC] = (siteCounts[a.homeDC]||0)+1;
+  });
+  const sitesWithAssets = Object.keys(siteCounts).filter(s=>siteCounts[s]>0);
+  const sitesWithCoords = sitesWithAssets.filter(s=>SITE_COORDS[s]);
+  const sitesUnmapped = sitesWithAssets.filter(s=>!SITE_COORDS[s]);
+
+  let html = `<div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+      <div><h2>Real-Time Dashboard &amp; Asset Status Monitoring</h2><div class="desc" style="margin-bottom:0;">Accessible to DC managers and hub supervisors.</div></div>
+      <div class="refresh-note"><span class="pulse"></span> Auto-refreshing every 60s · last updated <span id="lastUpdated">${new Date().toLocaleTimeString()}</span></div>
+    </div>
+
+    <h3>Status <span style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-dimmer);text-transform:none;letter-spacing:0;">— click to filter the table below</span></h3>
+    <div class="status-grid" id="statusGrid">
+      ${Object.entries(rollups).map(([k,v])=>`<button type="button" class="status-cell" data-status="${escapeHtml(k)}"><div class="sv">${v}</div><div class="sl">${k}</div></button>`).join('')}
+    </div>
+
+    <h3>KPI tracking</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kv">${coveragePct}%</div><div class="kl">Tagging coverage</div></div>
+      <div class="kpi"><div class="kv">${avgCycle!==null ? avgCycle+'h' : '—'}</div><div class="kl">Avg. asset cycle time</div></div>
+      <div class="kpi"><div class="kv">${lossRate}%</div><div class="kl">Loss / outstanding rate</div></div>
+      <div class="kpi"><div class="kv">${excCount}</div><div class="kl">Exception count</div></div>
+    </div>
+
+    <h3>Filter</h3>
+    <div class="filters">
+      <select id="dashType"><option value="">All asset types</option>${ASSET_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+      <select id="dashStatus"><option value="">All statuses</option>${Object.keys(rollups).map(k=>`<option value="${k}">${k}</option>`).join('')}</select>
+      <input id="dashSearch" type="search" placeholder="Search barcode…" />
+      <button class="btn sm" id="dashClear">Clear</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="reg"><thead><tr><th>Barcode</th><th>Type</th><th>Status</th><th>Location</th><th>Age (days since last scan)</th></tr></thead>
+        <tbody id="dashTableBody"></tbody>
+      </table>
+    </div>
+  </div>`;
+
+  html += `<div class="panel">
+    <h3 style="margin-top:0;">Map view — asset distribution</h3>
+    <div class="desc" style="margin-top:-8px;">Real map (OpenStreetMap) — plotting the ${sitesWithCoords.length} active site${sitesWithCoords.length===1?'':'s'} we have coordinates for.${sitesUnmapped.length ? ' ' + sitesUnmapped.length + ' active site(s) have no known location yet: ' + sitesUnmapped.slice(0,4).map(escapeHtml).join(', ') + (sitesUnmapped.length>4?'…':'') + '.' : ''}</div>
+    <div class="map-wrap">
+      <div id="leafletMap"></div>
+      <div class="map-legend"><span><i style="background:var(--amber);"></i> Distribution Centres</span><span><i style="background:var(--violet);"></i> Hubs / vendor sites</span><span><i style="background:var(--green);"></i> Returns facilities</span></div>
+    </div>
+
+    <h3>Export reports</h3>
+    <div class="export-row">
+      <button class="btn sm" id="expStatus">Daily status snapshot (CSV)</button>
+      <button class="btn sm" id="expExceptions">Exception log (CSV)</button>
+      <button class="btn sm" id="expAging">Aging report (CSV)</button>
+    </div>
+
+    <h3>Exception feed</h3>
+    <div id="exceptionFeed">
+      ${S.exceptions.length===0 ? '<div class="empty-note">No exceptions logged.</div>' : S.exceptions.slice().reverse().slice(0,12).map(e=>`
+        <div class="exception-row">
+          <div class="ex-ts">${fmtTs(e.ts)}</div>
+          <div><div class="ex-type">${e.type}</div><div>${escapeHtml(e.assetId)} — ${escapeHtml(e.note)}</div></div>
+          <div></div>
+        </div>`).join('') }
+    </div>
+  </div>`;
+
+  html += `<div class="panel">
+    <h3 style="margin-top:0;">Process reference — the 7 touch points</h3>
+    <div class="desc">Scanning itself happens in the TFS Logistics Scan app on each operator's phone or handheld — this is the reference copy for training and audit.</div>
+    <table class="ref"><thead><tr><th>#</th><th>Touch Point</th><th>Location</th><th>What happens</th></tr></thead><tbody>
+      ${TP_META.map(tp=>`<tr><td>${tp.seq}</td><td>${tp.title}</td><td>${tp.location}</td><td>${tp.what}</td></tr>`).join('')}
+    </tbody></table>
+    <h3>Wrong Source Warehouse (WSW)</h3>
+    <div class="desc">Misrouted stock — assets dispatched to the wrong DC are received, sorted, and processed back into normal outbound flow.</div>
+    <table class="ref"><thead><tr><th>#</th><th>Touch Point</th><th>Location</th><th>What happens</th></tr></thead><tbody>
+      ${WSW_META.map(tp=>`<tr><td>${tp.seq}</td><td>${tp.title}</td><td>${tp.location}</td><td>${tp.what}</td></tr>`).join('')}
+    </tbody></table>
+    <h3>Non-linear operational flows</h3>
+    <div class="desc">Lifecycle events that occur outside the standard DC-to-hub-to-DC dispatch loop.</div>
+    <table class="ref"><thead><tr><th>Flow</th><th>Role</th><th>What happens</th></tr></thead><tbody>
+      ${NONLINEAR_META.map(nl=>`<tr><td>${nl.title}</td><td>${nl.role}</td><td>${nl.what}</td></tr>`).join('')}
+    </tbody></table>
+  </div>`;
+
+  return html;
+}
+function bindDashboard(){
+  drawDashboardTable();
+  renderLeafletMap();
+  document.getElementById('dashType').addEventListener('change', drawDashboardTable);
+  document.getElementById('dashStatus').addEventListener('change', ()=>{ drawDashboardTable(); syncStatusGridActive(); });
+  document.getElementById('dashSearch').addEventListener('input', drawDashboardTable);
+  document.getElementById('dashClear').addEventListener('click', ()=>{
+    document.getElementById('dashType').value=''; document.getElementById('dashStatus').value=''; document.getElementById('dashSearch').value='';
+    drawDashboardTable(); syncStatusGridActive();
+  });
+  document.getElementById('statusGrid').addEventListener('click', (e)=>{
+    const cell = e.target.closest('.status-cell'); if(!cell) return;
+    const statusSel = document.getElementById('dashStatus');
+    statusSel.value = (statusSel.value === cell.dataset.status) ? '' : cell.dataset.status; // click again to clear
+    drawDashboardTable();
+    syncStatusGridActive();
+    document.getElementById('dashTableBody').closest('table').scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+  document.getElementById('expStatus').addEventListener('click', ()=> exportCsv('mercury-status-snapshot.csv',
+    ['Barcode','Type','Status','Home Site','Registered'],
+    S.assets.map(a=>[a.id,a.type,a.outstanding?'Outstanding':a.status,a.homeDC,new Date(a.registeredAt).toISOString()])));
+  document.getElementById('expExceptions').addEventListener('click', ()=> exportCsv('mercury-exception-log.csv',
+    ['Timestamp','Type','Asset','Note'],
+    S.exceptions.map(e=>[new Date(e.ts).toISOString(), e.type, e.assetId, e.note])));
+  document.getElementById('expAging').addEventListener('click', ()=> exportCsv('mercury-aging-report.csv',
+    ['Barcode','Status','Days at current status'],
+    S.assets.filter(a=>a.hubArrivalAt || a.outstanding).map(a=>[a.id, a.outstanding?'Outstanding':a.status, a.outstanding?daysSince(a.outstanding.since):daysSince(a.hubArrivalAt)])));
+
+  clearInterval(window.__mercuryRefresh);
+  window.__mercuryRefresh = setInterval(()=>{
+    const el = document.getElementById('lastUpdated');
+    if(!el){ clearInterval(window.__mercuryRefresh); return; }
+    el.textContent = new Date().toLocaleTimeString();
+    if(activeTab==='dashboard') drawDashboardTable();
+  }, 60000);
+}
+function syncStatusGridActive(){
+  const current = document.getElementById('dashStatus').value;
+  document.querySelectorAll('#statusGrid .status-cell').forEach(cell=>{
+    cell.classList.toggle('active', cell.dataset.status === current && current !== '');
+  });
+}
+function drawDashboardTable(){
+  const type = document.getElementById('dashType').value;
+  const status = document.getElementById('dashStatus').value;
+  const q = document.getElementById('dashSearch').value.trim().toLowerCase();
+  let rows = S.assets.filter(a=>{
+    if(type && a.type!==type) return false;
+    if(status && rollupStatus(a)!==status) return false;
+    if(q && !a.id.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b)=>a.id.localeCompare(b.id));
+  const body = document.getElementById('dashTableBody');
+  body.innerHTML = rows.map(a=>{
+    const loc = a.status.startsWith('At Hub:') ? a.status.replace('At Hub: ','') : (a.manifestKind==='return' ? (findManifest(a.manifestId)||{}).originHub||'—' : a.homeDC);
+    const ageBasis = a.outstanding ? a.outstanding.since : (a.hubArrivalAt || a.registeredAt);
+    return `<tr data-asset-id="${escapeHtml(a.id)}">
+      <td style="font-family:var(--font-mono);font-weight:600;">${a.id}</td>
+      <td>${a.type}</td>
+      <td><span class="chip ${a.outstanding?'c-outstanding':statusChipClass(a.status)}"><span class="dot"></span>${a.outstanding?'Outstanding':a.status}</span></td>
+      <td>${loc}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">${daysSince(ageBasis)}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="5" class="empty-note">No matching assets.</td></tr>`;
+  body.querySelectorAll('tr[data-asset-id]').forEach(tr=>{
+    tr.addEventListener('click', ()=> openAssetDetail(tr.dataset.assetId));
+  });
+}
+function exportCsv(filename, headers, rows){
+  const csv = [headers.join(',')].concat(rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
+  showToast('Exported ' + filename);
+}
+
+/* ---------------------------------------------------------------------
+   Real map (Leaflet + OpenStreetMap) — replaces the old illustrative SVG
+   --------------------------------------------------------------------- */
+let leafletMapInstance = null;
+function renderLeafletMap(){
+  const container = document.getElementById('leafletMap');
+  if(!container) return;
+  if(typeof L === 'undefined'){
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--font-mono);font-size:11px;color:var(--text-dimmer);text-align:center;padding:20px;">Map tiles need an internet connection to load (OpenStreetMap). This will render once the app is hosted online.</div>';
+    return;
+  }
+  if(leafletMapInstance){ leafletMapInstance.remove(); leafletMapInstance = null; }
+  const map = L.map('leafletMap', { scrollWheelZoom: false }).setView([-28.8, 24.7], 5); // South Africa
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  const siteCounts = {};
+  [...DC_SITES, ...HUB_SITES, ...RETURNS_SITES].forEach(s=> siteCounts[s]=0 );
+  S.assets.forEach(a=>{
+    if(a.status.startsWith('At Hub:')) siteCounts[a.status.replace('At Hub: ','')] = (siteCounts[a.status.replace('At Hub: ','')]||0)+1;
+    else siteCounts[a.homeDC] = (siteCounts[a.homeDC]||0)+1;
+  });
+
+  const colorFor = (name) => DC_SITES.includes(name) ? '#0B63CE' : RETURNS_SITES.includes(name) ? '#1E9E63' : '#6C5CE7';
+  const bounds = [];
+  Object.entries(siteCounts).forEach(([name, count])=>{
+    if(count <= 0) return;
+    const coord = SITE_COORDS[name];
+    if(!coord) return;
+    const r = 6 + Math.min(14, count * 2);
+    const marker = L.circleMarker(coord, { radius: r, color: colorFor(name), weight: 2, fillColor: colorFor(name), fillOpacity: 0.55 }).addTo(map);
+    marker.bindPopup(`<b>${escapeHtml(name)}</b><br>${count} asset${count===1?'':'s'}`);
+    bounds.push(coord);
+  });
+  if(bounds.length){ map.fitBounds(bounds, { padding: [30,30], maxZoom: 10 }); }
+  leafletMapInstance = map;
+}
+
+/* ---------------------------------------------------------------------
+   Camera barcode scan (used by "Register a new asset")
+   --------------------------------------------------------------------- */
+let zxingReader = null;
+let scanCallback = null;
+function scanSupported(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && typeof ZXing !== "undefined"; }
+async function openScanner(onResult){
+  scanCallback = onResult;
+  const overlay = document.getElementById("scanOverlay");
+  const statusEl = document.getElementById("scanStatus");
+  const video = document.getElementById("scanVideo");
+  overlay.style.display = "flex";
+  statusEl.style.color = "var(--text-dim)"; statusEl.textContent = "Requesting camera access…";
+  if(!scanSupported()){ statusEl.style.color="var(--red)"; statusEl.textContent="Camera scanning isn't available in this browser."; return; }
+  if(location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1"){
+    statusEl.style.color="var(--red)"; statusEl.textContent="Camera access needs HTTPS."; return;
+  }
+  try{
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX]);
+    zxingReader = new ZXing.BrowserMultiFormatReader(hints);
+    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+    const backCam = devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[devices.length-1];
+    statusEl.textContent = "Looking for a barcode…";
+    zxingReader.decodeFromVideoDevice(backCam?backCam.deviceId:undefined, video, (result)=>{
+      if(result){
+        const text = result.getText();
+        statusEl.style.color="var(--green)"; statusEl.textContent="Got it: " + text;
+        setTimeout(()=>{ closeScanner(); if(scanCallback) scanCallback(text); }, 400);
+      }
+    });
+  }catch(err){
+    statusEl.style.color="var(--red)";
+    if(err && err.name==="NotAllowedError") statusEl.textContent="Camera permission denied.";
+    else if(err && err.name==="NotFoundError") statusEl.textContent="No camera found.";
+    else statusEl.textContent="Couldn't start the camera.";
+  }
+}
+function closeScanner(){
+  document.getElementById("scanOverlay").style.display = "none";
+  if(zxingReader){ try{ zxingReader.reset(); }catch(e){} zxingReader = null; }
+  const video = document.getElementById("scanVideo");
+  if(video && video.srcObject){ video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; }
+}
+document.getElementById('scanCancel').addEventListener('click', closeScanner);
+document.getElementById('scanOverlay').addEventListener('click', (e)=>{ if(e.target.id==='scanOverlay') closeScanner(); });
+
+render();
+</script>
+</body>
+</html>

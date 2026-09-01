@@ -1,0 +1,17 @@
+{
+  "name": "tfs-logistics-backend",
+  "version": "1.0.0",
+  "description": "Production-shaped REST API for TFS Logistics / Mercury — every touch point, WSW, and non-linear flow implemented, with auth, caching, and a full test suite. Deliberately zero runtime dependencies (Node 22+ built-ins only) — see README for why, and the production swap-in path (Express/PostgreSQL/Redis/jsonwebtoken).",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "engines": { "node": ">=22.5.0" },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "seed": "node src/seed.js",
+    "test": "node --test src/__tests__/",
+    "test:watch": "node --test --watch src/__tests__/"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TFS Logistics</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#F4F7FB">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F7FB; --panel:#FFFFFF; --panel-2:#EEF3FA; --panel-3:#E1EAF6;
+    --line:rgba(10,40,80,0.08); --line-strong:rgba(10,40,80,0.18);
+    --amber:#0B63CE; --amber-dim:rgba(11,99,206,0.15);
+    --cyan:#2AA8E0; --cyan-dim:rgba(42,168,224,0.15);
+    --green:#1E9E63; --green-dim:rgba(30,158,99,0.15);
+    --red:#D93025; --red-dim:rgba(217,48,37,0.15);
+    --violet:#6C5CE7; --violet-dim:rgba(108,92,231,0.15);
+    --text:#101A2B; --text-dim:#5B6B82; --text-dimmer:#93A0B2;
+    --font-display:'Space Grotesk',sans-serif; --font-body:'Inter',sans-serif; --font-mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;} html,body{margin:0;padding:0;}
+  body{ background:var(--bg); color:var(--text); font-family:var(--font-body); min-height:100vh; -webkit-font-smoothing:antialiased; }
+  .wrap{ max-width:560px; margin:0 auto; padding:16px 14px 60px; }
+  header.top{ display:flex; align-items:center; justify-content:space-between; padding-bottom:12px; margin-bottom:14px; border-bottom:1px solid var(--line); gap:8px; }
+  .brand{ display:flex; align-items:center; gap:9px; }
+  .brand .mark{ width:auto; min-width:40px; height:30px; padding:0 7px; border-radius:6px; background:linear-gradient(135deg,var(--amber),var(--cyan)); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; color:#FFFFFF; font-size:11.5px; letter-spacing:0.5px; }
+  .brand h1{ font-family:var(--font-display); font-size:17px; margin:0; letter-spacing:0.3px; }
+  .session-tag{ display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); }
+  .session-tag b{ color:var(--text); font-weight:600; }
+  .session-tag button{ font-family:var(--font-mono); font-size:10px; background:transparent; border:1px solid var(--line-strong); color:var(--text-dim); padding:5px 8px; border-radius:6px; cursor:pointer; }
+
+  .back-link{ display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); background:transparent; border:none; cursor:pointer; padding:0; margin-bottom:12px; }
+  .back-link:hover{ color:var(--text); }
+
+  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  .panel + .panel{ margin-top:12px; }
+  .panel h2{ font-family:var(--font-display); font-size:16px; margin:0 0 4px; }
+  .panel .desc{ font-family:var(--font-body); font-size:12px; color:var(--text-dim); margin-bottom:12px; }
+
+  .btn{ font-family:var(--font-display); font-size:14px; letter-spacing:0.2px; border-radius:9px; border:1px solid var(--line-strong); background:var(--panel-2); color:var(--text); padding:13px 16px; cursor:pointer; }
+  .btn:hover{ border-color:var(--text-dim); }
+  .btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  .btn.primary{ background:var(--amber); color:#FFFFFF; border-color:var(--amber); font-weight:600; }
+  .btn.primary:hover{ filter:brightness(1.08); }
+  .btn.danger{ background:transparent; border-color:var(--red); color:var(--red); }
+  .btn.sm{ padding:7px 11px; font-size:12px; }
+  .btn.block{ width:100%; }
+  input, select{ font-family:var(--font-body); font-size:15px; padding:12px 13px; border-radius:9px; border:1px solid var(--line-strong); background:var(--panel-2); color:var(--text); }
+  input:focus, select:focus{ outline:none; border-color:var(--cyan); }
+
+  .chip{ display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.6px; text-transform:uppercase; padding:5px 10px; border-radius:20px; border:1px solid transparent; white-space:nowrap; }
+  .chip .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .chip.c-active{ background:var(--amber-dim); color:var(--amber); border-color:rgba(11,99,206,0.4); }
+
+  .login-wrap{ margin:30px auto 0; }
+  .login-wrap .panel{ text-align:left; }
+  .role-grid{ display:grid; grid-template-columns:1fr; gap:9px; margin-bottom:14px; }
+  .role-card{ background:var(--panel-2); border:1px solid var(--line-strong); border-radius:10px; padding:14px; text-align:left; cursor:pointer; }
+  .role-card:hover{ border-color:var(--cyan); }
+  .role-card.selected{ border-color:var(--amber); background:var(--amber-dim); }
+  .role-card .r-title{ font-family:var(--font-display); font-size:15px; }
+  .role-card .r-sub{ font-family:var(--font-mono); font-size:10px; color:var(--text-dim); margin-top:3px; text-transform:uppercase; letter-spacing:0.5px; }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-family:var(--font-mono); font-size:10px; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-dim); margin-bottom:5px; }
+  .field select, .field input{ width:100%; }
+
+  /* Touch point picker — big tap targets, only the operator's own steps */
+  .tp-list{ display:flex; flex-direction:column; gap:10px; }
+  .tp-card{ background:var(--panel-2); border:1px solid var(--line-strong); border-radius:10px; padding:16px; cursor:pointer; text-align:left; color:var(--text); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .tp-card:hover{ border-color:var(--cyan); }
+  .tp-card .tp-num{ font-family:var(--font-mono); font-size:10.5px; color:var(--amber); letter-spacing:1px; }
+  .tp-card .tp-title{ font-family:var(--font-display); font-size:16px; margin:3px 0 1px; }
+  .tp-card .tp-loc{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); }
+  .tp-card .arrow{ font-family:var(--font-mono); color:var(--text-dimmer); font-size:18px; }
+  .tp-card.other{ border-style:dashed; border-color:var(--violet); }
+  .tp-card.other .tp-num{ color:var(--violet); }
+  .tp-pick-list{ display:flex; flex-direction:column; gap:8px; }
+  .tp-pick{ background:var(--panel-2); border:1px solid var(--line-strong); border-radius:10px; padding:13px 14px; cursor:pointer; text-align:left; color:var(--text); }
+  .tp-pick:hover{ border-color:var(--cyan); }
+  .tp-pick .pk-id{ font-family:var(--font-mono); font-size:13px; font-weight:600; }
+  .tp-pick .pk-sub{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); margin-top:2px; }
+
+  .manifest-box{ background:var(--panel-2); border:1px solid var(--line-strong); border-radius:10px; padding:14px 15px; }
+  .manifest-box .mb-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px; }
+  .manifest-box .mb-id{ font-family:var(--font-mono); font-size:13px; font-weight:600; }
+  .progress-row{ display:flex; align-items:center; gap:10px; margin:10px 0; }
+  .progress-bar{ flex:1; height:9px; background:var(--panel-3); border-radius:5px; overflow:hidden; }
+  .progress-bar .fill{ height:100%; background:linear-gradient(90deg,var(--amber),var(--green)); border-radius:5px; }
+  .progress-label{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); white-space:nowrap; }
+
+  .scan-row{ display:flex; gap:8px; margin:10px 0; }
+  .scan-row input{ flex:1; font-family:var(--font-mono); font-size:16px; }
+  .scan-row .btn{ white-space:nowrap; }
+
+  .asset-pill-grid{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .apill{ font-family:var(--font-mono); font-size:11px; padding:6px 10px; border-radius:7px; border:1px solid var(--line-strong); background:var(--panel); }
+  .apill.scanned{ border-color:var(--green); color:var(--green); }
+  .apill.pending{ border-color:var(--line-strong); color:var(--text-dim); }
+  .apill.unexpected{ border-color:var(--red); color:var(--red); }
+  .apill.priority{ border-color:var(--amber); color:var(--amber); }
+
+  .alert{ font-family:var(--font-mono); font-size:12px; padding:10px 12px; border-radius:8px; margin-top:10px; }
+  .alert.warn{ background:var(--red-dim); color:var(--red); border:1px solid rgba(217,48,37,0.35); }
+  .alert.info{ background:var(--cyan-dim); color:var(--cyan); border:1px solid rgba(42,168,224,0.35); }
+  .alert.ok{ background:var(--green-dim); color:var(--green); border:1px solid rgba(30,158,99,0.35); }
+
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel-2); border:1px solid var(--green); color:var(--green); font-family:var(--font-mono); font-size:12px; padding:10px 18px; border-radius:8px; z-index:999; box-shadow:0 10px 26px rgba(0,0,0,0.4); opacity:0; pointer-events:none; transition:opacity .2s,transform .2s; max-width:90%; text-align:center; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+  .toast.err{ border-color:var(--red); color:var(--red); }
+  footer{ text-align:center; margin-top:26px; font-family:var(--font-mono); font-size:9px; letter-spacing:1px; color:var(--text-dimmer); }
+  .hidden{ display:none !important; }
+  .empty-note{ font-family:var(--font-mono); font-size:12px; color:var(--text-dimmer); padding:8px 0; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<div id="scanOverlay" style="position:fixed;inset:0;background:rgba(6,10,18,0.94);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;width:100%;max-width:420px;padding:16px;">
+    <h3 style="font-family:var(--font-display);font-size:17px;margin:0 0 4px;">Scan barcode</h3>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-bottom:10px;">Point the camera at the asset barcode.</div>
+    <div style="position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--line-strong);">
+      <video id="scanVideo" muted playsinline style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+    </div>
+    <div id="scanStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:10px;min-height:16px;"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px;"><button class="btn sm" id="scanCancel">Cancel</button></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script>
+/* =====================================================================
+   TFS LOGISTICS — handheld / phone app.
+   Touch-point scanning only. No dashboard, no registry — those live in
+   the separate TFS Logistics Console (back-office) app. Shares the same
+   localStorage state so both apps agree when run on the same device.
+   ===================================================================== */
+
+const DC_SITES = ['JHB-DC1','JHB-DC3','CPT-DC1','CPT-DC3','DBN-DC1'];
+const HUB_SITES = ["Alberton (ALB)","Heidelberg (OLD) (HBG)","Nigel (OLD) (NGL)","Vosloorus Food (VRS)","Amanzimtoti (AMZ)","Ballito (BA2)","Ballito eBike (B22)","Mandini (MDI)","Salt Rock (SRK)","Stanger (STR)","Tongaat (TGT)","Verulam (VLM)","Zinkwazi (ZIN)","Ballito Central (BLT)","Bedfordview (BFV)","Benmore Gardens (BMG)","Benoni (BEN)","Brakpan (BPN)","Daveyton (DVT)","KwaThema (KTA)","Springs (SPR)","Tsakane (TSA)","Berea (ELB)","Bethlehem (BET)","Bethlehem eBike (B2T)","Clarens (CLA)","Ficksburg (FCK)","Frankfort (FNK)","Harrismith (OLD) (HRR)","Ladybrand (OLD) (LDB)","Senekal (SEN)","BKB Ermelo (BKE)","BKB Standerton (BST)","Bloemfontein (BLO)","Bloemfontein Edge (BLM)","Brandfort (BDT)","Mangaung (MNG)","Thaba Nchu (TBN)","Virginia (VIR)","Welkom (OLD) (WKM)","Bloemfontein Generaal De Wet (BMU)","Brackenfell (BRA)","Kuils River (OLD) (KUI)","Bredasdorp (BRE)","Caledon (CDN)","Gansbaai (GAN)","Hermanus (HMC)","L'Agulhas (LAG)","Swellendam (SWD)","Witsand (WSD)","Bredasdorp Square (BRD)","Bryanston (BRY)","Camps Drift (PMZ)","Canal Walk (CNW)","Carletonville (CTV)","Kagiso (KAG)","Centurion (CEN)","Centurion Mall Food (CNM)","Irene (IRN)","Lyttelton (LTN)","Midfields (MDE)","Midstream (MDM)","Rooihuiskraal (RHK)","Centurion Mall (CNT)","CNT TALNow Darkstore (C2N)","Bluff (BLU)","Chatsworth (CHW)","Chatsworth eBike (C2W)","Queensburgh (QUE)","Umlazi (UML)","Courier IT LH (CIL)","Colesberg (CLB)","Colesberg Direct (B99)","Gariepdam (GRD)","Philippolis (PHP)","Richmond - NC (RCH)","Steynsburg (SBG)","Constantia (CON)","Grassy Park (GRP)","Hout Bay (HTB)","CON TALNow Darkstore (C2O)","Courier IT (CIT)","CPT Direct 1 (CT1)","CPT Direct 10 (C10)","CPT Direct 11 (C11)","CPT Direct 2 (CT2)","CPT Direct 3 (CT3)","CPT Direct 4 (CT4)","CPT Direct 5 (CT5)","CPT Direct 6 (CT6)","CPT Direct 7 (CT7)","CPT Direct 8 (CT8)","CPT Direct 9 (CT9)","CT Dispatch WG (C90)","CPT Direct 99 (C99)","CPT Direct Fulfillment (CTD)","Cresta (CRE)","Randburg (RAN)","Dainfern (DNF)","Douglasdale (DGD)","DPD Laser (DPD)","Dundee (OLD) (DUN)","East London (EAS)","Gonubie (GON)","Greenfields (GRE)","King Williams Town (KWT)","Southernwood (SNW)","Boksburg (BKS)","East Rand Mall (ERM)","Standerton (OLD) (STN)","Balfour (BFR)","EC Direct 1 (EC1)","EC Direct 10 (E10)","EC Direct 11 (E11)","EC Direct 12 (E12)","EC Direct 2 (EC2)","EC Direct 3 (EC3)","EC Direct 4 (EC4)","EC Direct 5 (EC5)","EC Direct 6 (EC6)","EC Direct 7 (EC7)","EC Direct 8 (EC8)","EC Direct 9 (EC9)","EC Direct 99 (E99)","EC Direct Fulfillment (ECD)","Bedfordview (OLD) (BED)","Edenvale (EDE)","EDE TALNow Darkstore (E2E)","Elgin Mall (EGN)","Bethal (BTL)","Carolina (CRL)","Ermelo (EML)","Piet Retief (PTR)","Standerton (STA)","Faerie Glen (FRG)","FAST AND FURIOUS (FNF)","Firgrove (FIR)","FNB City (FBC)","Fordsburg (CAR)","Fordsburg Square (CFS)","Melville EXP (MEL)","Foreshore (HOH)","Foreshore 1 (HO1)","Fourways (FOU)","Diepsloot (DPS)","Gardens (GAR)","Seapoint (SEA)","Gateway (GAT)","Gateway eBike (G2T)","KwaMashu (KWM)","Newlands West (NLW)","Phoenix (PHX)","Umdloti (UMD)","George (GEO)","Herolds Bay (HRB)","Knysna (KNY)","Mossel Bay (OLD) (MOS)","Oudtshoorn (ODS)","Plettenberg Bay (PBB)","Prince Albert (PRA)","Sedgefield (SED)","Wildernis (WIL)","Germiston (GMS)","Germiston Food (GER)","Graaff-Reinet (GRR)","Cradock (CRA)","Bathurst (BAT)","Boesmansriviermond (BMR)","Grahamstown (GRA)","Port Alfred (PAL)","Harrismith (HRS)","Harrismith eBike (H2S)","Phuthaditjhaba (PHU)","Warden (WDN)","Winterton (WTN)","Hatfield (HAT)","Hatfield North (HTN)","Pretoria Central (PTC)","Heidelberg (HEI)","Nigel (NIG)","Hermanstad (HMS)","Hermanus Central (HMN)","Hilton (HLN)","Howick (HOK)","Hillcrest Oxford (HLC)","Howard College Campus (HCC)","JHB Direct 1 (JB1)","JHB Direct 10 (J10)","JHB Direct 11 (J11)","JHB Direct 12 (J12)","JHB Direct 13 (J13)","JHB Direct 14 (J14)","JHB Direct 15 (J15)","JHB Direct 16 (J16)","JHB Direct 2 (JB2)","JHB Direct 3 (JB3)","JHB Direct 4 (JB4)","JHB Direct 5 (JB5)","JHB Direct 6 (JB6)","JHB Direct 7 (JB7)","JHB Direct 8 (JB8)","JHB Direct 9 (JB9)","JHB Dispatch WG (J90)","JHB Direct 99 (J99)","JHB Direct Fulfillment (JBD)","JS Direct 1 (JS1)","JS Direct 2 (JS2)","JS Direct 3 (JS3)","JS Direct 4 (JS4)","JS Direct 5 (JS5)","JS Direct 6 (JS6)","JS Direct 7 (JS7)","JS Direct 8 (JS8)","JS Direct 9 (JS9)","JS Direct WG (S90)","JS Direct 99 (S99)","JS Direct Fulfillment (JSD)","Hotazel (HOT)","Kathu (KAT)","Kuruman (KUR)","Lime Acres (LIM)","Postmasburg (PST)","Kempton Park (KEM)","Athlone (ATH)","Kenilworth (KEN)","Mitchells Plain (MPL)","Barkly West (BKL)","Bloemhof (BHF)","Christiana (CHR)","Douglas (DGL)","Hartswater (HAR)","Jan Kempdorp (JAN)","Kimberley (KIM)","Kimberley eBike (K2M)","Petrusburg (PTB)","Schweizer-Reneke (SCH)","Vryburg (VRY)","Warrenton (WAR)","Kingfisher (KNF)","Klerksdorp (KLD)","Orkney (ORK)","Bothaville (OLD) (BTV)","Wolmaransstad (WOL)","Knysna Central (KNA)","Harding (HRD)","Ixopo (IXP)","Kokstad (KSD)","Kokstad Direct (O99)","Kokstad (L) (KS1)","Matatiele (MTL)","Mthatha (KSD) (MTA)","Port Edward (PED)","Port St Johns (PSJ)","Kroonstad (KRO)","Bothaville (BOT)","Kuils River (KLR)","KZN Direct 1 (KZ1)","KZN Direct 2 (KZ2)","KZN Direct 3 (KZ3)","KZN Direct 4 (KZ4)","KZN Direct 5 (KZ5)","KZN Direct 6 (KZ6)","KZN Direct 7 (KZ7)","KZN Direct 8 (KZ8)","KZN Dispatch WG (K90)","KZN Direct 99 (K99)","KZN Direct Fulfillment (KZD)","Hobhouse (HBS)","Ladybrand (LDY)","Marquard (MQD)","Rouxville (RXV)","Lenasia (LNA)","Lenasia South (LSO)","Lephalale (LPL)","Marapong (MRP)","Swartwater (SWA)","Thabazimbi (THA)","Vaalwater (VAA)","Little Falls (LTF)","Giyani (GIY)","Louis Trichardt (LTR)","Musina (MUS)","Thohoyandou (THO)","LP Direct 1 (LP1)","LP Direct 2 (LP2)","LP Direct 3 (LP3)","LP Direct 4 (LP4)","LP Direct 5 (LP5)","LP Direct 6 (LP6)","LP Direct 7 (LP7)","LP Direct 8 (LP8)","LP Direct 9 (LP9)","LP Direct 99 (L99)","LP Direct Fulfillment (LPD)","Lynnwood (LNW)","Meyerspark (MRK)","Lichtenburg (LTB)","Mafikeng (MFK)","Zeerust (hub) (ZRT)","Abbotsdale (ABB)","Atlantis (ATL)","Brittania Bay (BBA)","Chatsworth WC (CHA)","Darling (DLG)","Gouda (GOU)","Hopefield (HOP)","Kalbaskraal (KAL)","Koringberg (KOR)","Langebaan (LGB)","Langebaanweg (LBA)","Malmesbury (MAL)","Moorreesburg (MRB)","Paternoster (PAT)","Philadelphia (PIL)","Piketburg (PIK)","Porterville (PTV)","Riebeeck Kasteel (RKA)","Riebeeck West (RWE)","Saldanha (SLD)","Saron (SAR)","St Helena Bay (SHB)","Tierfontein (TIE)","Velddrif (VEL)","Vredenburg (VRE)","Yzerfontein (YZF)","Mamelodi (MAM)","Mamelodi West (MMF)","Margate (MGT)","Mbombela (MBB)","Mbombela 1 (MB1)","Mbombela 2 (MB2)","Mbombela 3 (MB3)","Mbombela 4 (MB4)","Mbombela 5 (MB5)","Mbombela 6 (MB6)","Mbombela 7 (MB7)","Mbombela 8 (MB8)","Mbombela 9 (MB9)","Mbombela 99 (M99)","Melville TPP (MLV)","Bronkhorstspruit (BHS)","Cullinan (CUL)","Menlyn (LYN)","Mooikloof (MKF)","Rayton (RAY)","Meyerton (MEY)","Groblersdal (GDL)","Groblersdal (OLD) (GBD)","Mhluzi (MHL)","Middelburg (MLG)","Midrand (MID)","Waterfall (WAT)","Midrand (N1 Bridge) (NRD)","Milnerton (MIL)","Bela Bela (BEB)","Modimolle (MOD)","Mookgopong (MPG)","Montana (MON)","Bluff (OLD) (BLF)","Chatsworth (OLD) (CTW)","Morningside (BER)","BER TALNow Darkstore (B2R)","Chesterville (CHE)","Kloof (KLO)","Umbilo (UMB)","Westville (Hub) (WSV)","Calitzdorp (CZD)","Dana Bay (DNB)","Groot Brak (GBR)","Mossel Bay (MSB)","Riversdale (RVD)","Still Bay (STB)","Mthatha (MTH)","Multichoice (MTC)","Goodwood (GWD)","N1 City / Parow (PAR)","NC Direct 1 (NC1)","NC Direct 2 (NC2)","NC Direct 3 (NC3)","NC Direct 4 (NC4)","NC Direct 5 (NC5)","NC Direct 6 (NC6)","NC Direct 7 (NC7)","NC Direct 8 (NC8)","NC Direct 9 (NC9)","NC Direct 99 (N99)","NC Direct Fulfilment (NCD)","Barberton (BAR)","Hazyview (HZV)","Komatipoort (KMP)","Lydenburg (LYD)","Machadodorp (MCH)","Nelspruit (NEL)","Nelspruit eBike (N2L)","Sabie (SAB)","White River (WHI)","New Era Springs (NER)","Duduza (DDZ)","Newcastle Central (NWC)","Dundee (DNE)","Ladysmith (LAD)","Nqutu (NQU)","Newcastle (NCS)","Madadeni (MDD)","Paulpietersburg (PPB)","Volksrust (VKR)","Vrede (VDE)","Vryheid (VHD)","Noordhoek (NDH)","Cosmo City (CMC)","Northgate (NGT)","Norwood (NOR)","Ottery (OTT)","Ashton (ASH)","Ceres (CER)","Montagu (MOG)","Paarl (PAA)","Paarl South (PAS)","Rawsonville (RAW)","Robertson (ROB)","Wellington (WEL)","Worcester (Hub) (WOR)","Amanzimtoti (OLD) (AMA)","Amanzimtoti eBike (A2A)","Creighton (CRN)","Kingsburgh (KIN)","Margate EXP (MAR)","Park Rynie (PKR)","Pennington (PEN)","Port Shepstone (PSH)","Scottburgh (SCO)","Umkomaas (UMK)","Umzinto (UMZ)","Burgersfort (BGF)","Bushbuckridge (BBR)","Hoedspruit (HDP)","Phalaborwa (PLB)","Pick n Pay Beacon Bay (PBE)","Pick n Pay Bethal (PBT)","Pick n Pay Local Chamdor (PCD)","Pick n Pay Chilli Lane (PCL)","Pick n Pay Chris Hani (PCH)","Pick n Pay Claremont (PCM)","Pick n Pay Constantia* (PCS)","Pick n Pay Daveyton Mall (PDM)","Pick n Pay Eerste River (PER)","Pick n Pay Fleurhof Mall (PFL)","Pick n Pay Festival Mall (PFM)","Pick n Pay Glen Garry (PGG)","Pick n Pay Gonubie (PGO)","Pick n Pay Hyper Brackenfell (PHB)","Pick n Pay Hyper Centurion (PHC)","Pick n Pay Hyper Durban North (PHD)","Pick n Pay Hyper Greenstone (PGS)","Pick n Pay Hyper Montana (PHM)","Pick n Pay Hyper Northgate (PNO)","Pick n Pay Hyper Norwood (PHN)","Pick n Pay Hyper Steeldale (PHS)","Pick n Pay Hyper Wonderpark (PWP)","Pick n Pay Hyper Woodmead (PWM)","Pick n Pay Irene Village Mall (PIV)","Pick n Pay Kensington (PKE)","Pick n Pay Key West (PKW)","Pick n Pay Killarney (PKL)","Pick n Pay KwaMnyandu (PUM)","Pick n Pay Kyalami (PKM)","Pick n Pay Linton Corner (PLC)","Pick n Pay Mall at Reds (PMR)","Pick n Pay Mall of Africa (PMA)","Pick n Pay Menlyn Park (PMP)","Pick n Pay Pinelands* (PPL)","Pick n Pay Plattekloof (PPK)","Pick n Pay Promenade (PPM)","Pick n Pay Queensburgh (PQB)","Pick n Pay Ruimsig (PRU)","Pick n Pay Stellenbosch (PSB)","Pick n Pay TableBay Mall (PTM)","Pick n Pay Tembisa (PTE)","Pick n Pay Tshwane Mall (PTS)","Pick n Pay Vangate Mall (PVM)","Pick n Pay Waterfall Mal (PWF)","Pick n Pay Waterfront (PVA)","Balgowan (BAL)","Cato Ridge (CTR)","Dalton (DAL)","Edendale / Imbali (IMB)","Estcourt (EST)","Greytown (GRT)","Hilton EXP (HIL)","Howick EXP (HOW)","Mooi River (MOI)","New Hanover (NHN)","Northdale (NDE)","Northern Park eBike (P3E)","Nottingham Road (NOT)","Pietermaritzburg (PIE)","Raisethorpe eBike (P2E)","Richmond (RMD)","Rosetta (RST)","Scottsville (SVE)","Scottsville eBike (S2E)","Underberg (UND)","Wartburg (WRT)","Pineslopes (PIN)","Hillcrest (HCT)","Pinetown (PNT)","Pinetown eBike (P2T)","Plumstead (PLU)","Dendron (DEN)","Hoedspruit (OLD) (HDS)","Lebowakgomo (LEB)","Letsitele (LET)","Mankweng (MAN)","Mokopane (MOK)","Phalaborwa (OLD) (PHA)","Polokwane (POL)","Seshego (SES)","Tzaneen (TZA)","Pongola (PNG)","Pongola 1 (PN1)","Pongola 2 (PN2)","Pongola 3 (PN3)","Pongola 4 (PN4)","Pongola 5 (PN5)","Pongola 99 (P99)","Baywest (BAY)","Bethelsdorp (BTD)","Humansdorp (OLD) (HUM)","Ibhayi (IBY)","Jeffreys Bay (OLD) (JEF)","North End/Korsten (KRN)","Port Elizabeth (NEW)","St Francis Bay (OLD) (STF)","Summerstrand (Hub) (SUM)","Uitenhage (OLD) (UIT)","Klerksdorp (OLD) (KLE)","Kroonstad (OLD) (KST)","Parys (PRS)","Potchefstroom (POT)","Ventersdorp (VTD)","Alexandra (AXD)","Atteridgeville (ATT)","Laudium (LAU)","Pretoria West (PTW)","Tembisa West (TBW)","Aliwal North (ALN)","Butterworth (BTW)","East London (L) (EAL)","Lady Grey (LDG)","Maclear (MCL)","Middelburg Cape (MBC)","Mthatha (QTN) (MTT)","Queenstown Direct (Q99)","Queenstown (QTN)","Mohlakeng (MHK)","Randfontein (RDF)","Randpark Ridge (RPR)","Retreat (RET)","Empangeni (EMP)","Eshowe (ESH)","Esikhawini (ESK)","Hluhluwe (HLU)","Meer N See (MNS)","Ngwelezane (NGZ)","Richards Bay (RBY)","Richards Bay eBike (R2Y)","St Lucia (STL)","Richmond Park (CTC)","Rivonia / Sunninghill (RIV)","Rondebosch (RON)","Rosebank (ROS)","Brits (BRI)","Hartbeespoort (HBP)","Hartbeespoort South (HTS)","Mooinooi (MNI)","Phokeng (PHO)","Rustenburg (RUS)","Sun City (SUN)","Sandown (SDN)","Sandton (SAN)","Evander (EVD)","Secunda (SEC)","Somerset Mall (SWE)","Bettys Bay (BBY)","Eerste Rivier (EES)","Grabouw (GRB)","Hermanus (OLD) (HER)","Kleinmond (KMD)","Pringle Bay (PBY)","Rooiels (REL)","Somerset West (SOM)","Southern Paarl (SPL)","Lenasia (OLD) (LEN)","Lenasia South (OLD) (LNS)","Southern Suburbs (SOU)","Dobsonville (DBS)","Eldorado Park (ELD)","Fochville (FHV)","Jabulani (JAB)","Protea Glen (PGN)","Soweto (SOW)","Westonaria (WNR)","Alexander Bay (ALX)","Garies (GRS)","Kleinsee (KLS)","O'Kiep (OKP)","Pofadder (PFD)","Port Nolloth (PNL)","Sanddrift (SND)","Springbok Direct (R99)","Springbok (SPB)","Vioolsdrif (VIO)","Durban North (DNN)","Springfield (SFD)","Franschhoek (FRA)","Stellenbosch (STE)","Stikland TALNow Darkstore (S2K)","Summerstrand (SMD)","Sunward Park (SWP)","Melkbosstrand (MBS)","Tableview (TAB)","TAL Returns (TAL)","Tembisa (TMB)","Tembisa South (TMS)","TFS SC Eastport (ESP)","TFS SC Olifantsfontein (OFT)","The Towers Boksburg (BKT)","Fish Hoek (FIS)","Noordhoek (OLD) (NDK)","Tokai (TOK)","Tygervalley (TYG)","Jeffreys Bay (JBY)","Uitenhage (UTN)","Umhlanga (UMH)","Kakamas (KKM)","Prieska (PRI)","Upington (UPT)","Evaton (EVT)","Meyerton (OLD) VDB (MRT)","Sasolburg (SAS)","Orange Farm (ORF)","Three Rivers (THR)","Vanderbijlpark (VDB)","VDB Farms (VDF)","Meyerton (OLD) (MYT)","Vereeniging (VER)","Vital (VDS)","Vosloorus (VOS)","Sky City (SKC)","Calvinia (CAL)","Citrusdal (CDL)","Lamberts Bay (LAM)","Lutzville (LZV)","Springbok (OLD) (SBK)","Vredendal (VDL)","Walmer (WAL)","Waterkloof Lifestyle Centre (WLC)","Hoopstad (HPS)","Theunissen (TNS)","Welkom (WLK)","Roodepoort (RDP)","Weltevreden Park (WTV)","Weltevreden Park Hillfox (WTP)","Krugersdorp (KRU)","Randfontein (Hub) (RND)","Ruimsig (RUI)","Westrand (WGT)","Westville (WES)","Westville Campus (WVC)","White River Bahati (WTR)","Ackerville (ACK)","Duvha (DUV)","Witbank (WIT)","Witbank ebike (W2T)","WITS Students & Staff (WTC)","Hammanskraal (HAM)","Mabopane (MBP)","Pretoria North (PTN)","Roodeplaat (RDT)","Thorntree View (TTV)","Wonderboom (WNB)","Woodstock (WDS)","Worcester (WST)","Zeerust (ZEE)","Booysens Reserve","Bramley","Centurion Old Mint Park","Chiselhurst","Diep River","Fontainebleau","Hunters Retreat","Kya Sands","Lyndhurst","Moreleta Park","Mount Edgecombe","North Beach","Northfield","Parklands","Pinelands","Sunnyside"];
+const RETURNS_SITES = ['Returns Facility — Isando'];
+const GLS_SITES = ['GLS Johannesburg','GLS Cape Town'];
+
+const TP_META = [
+  { seq:1, id:'tp1', title:'DC Dispatch Open', role:'DC', location:'Distribution Centre' },
+  { seq:2, id:'tp2', title:'DC Dispatch Close', role:'DC', location:'Distribution Centre' },
+  { seq:3, id:'tp3', title:'TDT Dispatch Intake', role:'TDT', location:'TDT Vehicle' },
+  { seq:4, id:'tp4', title:'TDT Dispatch Loaded', role:'TDT', location:'TDT Vehicle' },
+  { seq:5, id:'tp5', title:'Hub Intake', role:'Hub', location:'Hub / Vendor Site' },
+  { seq:6, id:'tp6', title:'Hub Empty Collection', role:'Hub', location:'Hub / Vendor Site' },
+  { seq:7, id:'tp7', title:'DC Return Receipt', role:'DC', location:'Distribution Centre' },
+  { seq:1, id:'wsw1', labelPrefix:'WSW', title:'WSW Intake', role:'WSW', location:'Distribution Centre' },
+  { seq:2, id:'wsw2', labelPrefix:'WSW', title:'WSW Sort & Process', role:'WSW', location:'Distribution Centre' },
+];
+
+// Non-linear lifecycle flows (beyond the 7 touch points)
+const NONLINEAR_META = [
+  { id:'damaged', title:'Damaged Asset Scan-Out', role:'TDT', location:'TDT Vehicle / Yard' },
+  { id:'maint', title:'Maintenance Scan-Out / In', role:'DC', location:'Distribution Centre' },
+  { id:'gls', title:'GLS Vendor Custody', role:'DC', location:'Distribution Centre' },
+  { id:'interdc', title:'Inter-DC Transfer', role:'DC', location:'Distribution Centre' },
+];
+
+const ROLES = [
+  { id:'DC', title:'DC Operator', sub:'Dispatch Open / Close · Return Receipt', sites: DC_SITES },
+  { id:'TDT', title:'TDT Driver', sub:'Vehicle Intake · Loaded Confirm', sites: null },
+  { id:'Hub', title:'Hub Operator', sub:'Hub Intake · Empty Collection', sites: HUB_SITES },
+  { id:'WSW', title:'WSW Operator', sub:'Wrong Source Warehouse — Intake & Sort', sites: DC_SITES },
+];
+
+const STORE_KEY = 'mercury.app.state.v2'; // no longer used for assets/manifests (those come from the API now) — kept only for the dc/hub/returns site-catalog convenience arrays below.
+
+function nowTs(){ return Date.now(); }
+function fmtTs(ts){ return ts ? new Date(ts).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'; }
+function daysSince(ts){ return Math.floor((nowTs()-ts)/86400000); }
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function uidManifest(prefix){ return prefix + '-' + String(Math.floor(100000+Math.random()*899999)); }
+
+/* =========================================================
+   API client — every read/write in this app goes through the real
+   backend now. See TECHNICAL-SPEC.md §7 for the original mapping this
+   retrofit implements.
+   ========================================================= */
+const API_BASE_URL = window.TFS_API_BASE_URL || 'http://localhost:4000';
+let apiToken = sessionStorage.getItem('tfs_token') || null;
+
+async function apiRequest(method, path, body){
+  const headers = { 'Content-Type': 'application/json' };
+  if(apiToken) headers.Authorization = 'Bearer ' + apiToken;
+  const res = await fetch(API_BASE_URL + path, { method, headers, body: body!==undefined ? JSON.stringify(body) : undefined });
+  let data = null;
+  try{ data = await res.json(); }catch(e){ /* e.g. 204 */ }
+  if(!res.ok){ throw new Error((data && data.error) || ('request failed: ' + res.status)); }
+  return data;
+}
+const apiGet = (path) => apiRequest('GET', path);
+const apiPost = (path, body) => apiRequest('POST', path, body);
+
+/* Backend rows use snake_case DB column names; every existing render()
+   function below expects the original camelCase shape, so we translate
+   once here rather than touching 900 lines of template literals. */
+function mapAssetFromApi(a){
+  return {
+    id:a.id, type:a.type, homeDC:a.home_site_code, status:a.status, stage:a.stage,
+    outstanding: a.outstanding_reason ? { reason:a.outstanding_reason, since: a.outstanding_since ? new Date(a.outstanding_since).getTime() : nowTs() } : null,
+    manifestId:a.manifest_id, manifestKind:a.manifest_kind,
+    hubArrivalAt: a.hub_arrival_at ? new Date(a.hub_arrival_at).getTime() : null,
+    custodyLog: (a.custodyLog||[]).map(c=>({note:c.note, ts:new Date(c.ts).getTime(), operator:c.operator})),
+    transferTo: a.transfer_to_code,
+    registeredAt: a.registered_at ? new Date(a.registered_at).getTime() : nowTs(),
+  };
+}
+function mapManifestFromApi(m){
+  const assets = m.assets || [];
+  return {
+    id:m.id, kind:m.kind, originDC:m.origin_dc_code, destinationHub:m.destination_hub_code,
+    originHub:m.origin_hub_code, destinationDC:m.destination_dc_code,
+    createdAt: m.created_at ? new Date(m.created_at).getTime() : nowTs(),
+    expected: assets.filter(a=>a.expected).map(a=>a.asset_id),
+    scanned: {}, unexpected: [],
+    stage:m.stage, log:[], completedDispatch: !!m.completed_dispatch, returnManifestId:null,
+    ePOD:m.epod_id, eta:m.eta,
+  };
+}
+/** Refetches assets + manifests from the backend into the local mirror `S` reads for rendering. Call after every successful write. */
+async function syncStateFromApi(){
+  const [assets, manifests] = await Promise.all([apiGet('/api/assets'), apiGet('/api/manifests')]);
+  S.assets = assets.map(mapAssetFromApi);
+  S.manifests = manifests.map(mapManifestFromApi);
+}
+
+function seedSiteCatalog(){
+  // Site *catalogs* (which DCs/hubs/returns facilities exist, for dropdown
+  // population) still ship with the client as static reference data —
+  // the backend has no public unauthenticated "list sites" endpoint (by
+  // design: /api/sites requires a token, and you need a site to log in).
+  // The backend independently validates every real action against its
+  // own sites table, so this is safe: a stale/incorrect entry here just
+  // means a dropdown option that the server will reject, never a way to
+  // bypass server-side validation.
+  return { assets:[], manifests:[], exceptions:[], taggedFleet:0, totalFleet:0, session:null,
+    dcSites: DC_SITES.slice(), hubSites: HUB_SITES.slice(), returnsFacilities: RETURNS_SITES.slice() };
+}
+
+let S = seedSiteCatalog();
+
+let activeTP = null;
+let scanBuffer = {};
+
+function findAsset(id){ return S.assets.find(a=>a.id.toLowerCase()===String(id).trim().toLowerCase()); }
+function findManifest(id){ return S.manifests.find(m=>m.id===id); }
+function showToast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (isErr?' err':'');
+  setTimeout(()=> t.className='toast', 1900);
+}
+
+/* --------------------------------------------------------------------- */
+function render(){
+  const app = document.getElementById('app');
+  if(!S.session){ app.innerHTML = renderLogin(); bindLogin(); return; }
+  if(!activeTP){ app.innerHTML = renderShellPicker(); bindShellPicker(); return; }
+  app.innerHTML = renderShellTP();
+  bindShellTP();
+}
+
+function renderLogin(){
+  return `
+  <div class="login-wrap">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div class="mark" style="display:inline-flex;width:auto;min-width:52px;height:44px;padding:0 14px;border-radius:9px;background:linear-gradient(135deg,var(--amber),var(--cyan));align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;color:#FFFFFF;font-size:15px;letter-spacing:0.5px;margin-bottom:10px;">TFS</div>
+      <h1 style="font-family:var(--font-display);font-size:22px;margin:0;">TFS LOGISTICS</h1>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1.4px;text-transform:uppercase;margin-top:4px;">Touch point scanning</div>
+    </div>
+    <div class="panel">
+      <div class="field"><label>Role</label>
+        <div class="role-grid" id="roleGrid">
+          ${ROLES.map(r=>`<div class="role-card" data-role="${r.id}"><div class="r-title">${r.title}</div><div class="r-sub">${r.sub}</div></div>`).join('')}
+        </div>
+      </div>
+      <div class="field hidden" id="siteField"><label id="siteLabel">Site</label><select id="siteSelect"></select></div>
+      <div class="field"><label>Operator name / ID</label><input id="opName" type="text" placeholder="e.g. T. Nkosi / OP-2214" /></div>
+      <button class="btn primary block" id="loginBtn">Log in</button>
+    </div>
+  </div>`;
+}
+function bindLogin(){
+  let selectedRole = null;
+  document.querySelectorAll('.role-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedRole = card.dataset.role;
+      const roleDef = ROLES.find(r=>r.id===selectedRole);
+      const siteField = document.getElementById('siteField');
+      if(roleDef.sites){
+        siteField.classList.remove('hidden');
+        document.getElementById('siteLabel').textContent = roleDef.id === 'DC' ? 'Distribution Centre' : roleDef.id === 'WSW' ? 'Distribution Centre (WSW site)' : 'Hub / vendor site';
+        document.getElementById('siteSelect').innerHTML = roleDef.sites.map(s=>`<option value="${s}">${s}</option>`).join('');
+      } else {
+        siteField.classList.add('hidden');
+      }
+    });
+  });
+  document.getElementById('loginBtn').addEventListener('click', async ()=>{
+    if(!selectedRole){ showToast('Select a role first.', true); return; }
+    const roleDef = ROLES.find(r=>r.id===selectedRole);
+    const opName = document.getElementById('opName').value.trim() || 'Unnamed operator';
+    const site = roleDef.sites ? document.getElementById('siteSelect').value : null;
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true; btn.textContent = 'Logging in…';
+    try{
+      const data = await apiPost('/api/auth/login', { operatorName: opName, role: selectedRole, siteCode: site });
+      apiToken = data.token;
+      sessionStorage.setItem('tfs_token', apiToken);
+      S.session = { role: selectedRole, site: site || 'TDT Fleet', opName, since: nowTs() };
+      await syncStateFromApi();
+      activeTP = null;
+      render();
+    }catch(err){
+      showToast('Login failed: ' + err.message, true);
+      btn.disabled = false; btn.textContent = 'Log in';
+    }
+  });
+}
+
+/* Picker: just the touch points that belong to this role — nothing else. */
+function renderShellPicker(){
+  const roleDef = ROLES.find(r=>r.id===S.session.role);
+  const myTPs = TP_META.filter(tp=>tp.role===S.session.role);
+  const myOther = NONLINEAR_META.filter(nl=>nl.role===S.session.role);
+  return `
+    <header class="top">
+      <div class="brand"><div class="mark">TFS</div><h1>TFS LOGISTICS</h1></div>
+      <div class="session-tag"><span><b>${roleDef.title}</b>${S.session.site?' · '+escapeHtml(S.session.site):''}</span><button id="logoutBtn">Switch</button></div>
+    </header>
+    <div class="panel">
+      <h2>Your touch points</h2>
+      <div class="desc">${escapeHtml(S.session.opName)} — tap a step to scan.</div>
+      <div class="tp-list">
+        ${myTPs.map(tp=>`<button type="button" class="tp-card" data-tp="${tp.id}">
+            <div><div class="tp-num">${tp.labelPrefix||'TP'}${tp.seq}</div><div class="tp-title">${tp.title}</div><div class="tp-loc">${tp.location}</div></div>
+            <div class="arrow">→</div>
+          </button>`).join('')}
+      </div>
+    </div>
+    ${myOther.length ? `<div class="panel">
+      <h2>Other movements</h2>
+      <div class="desc">Non-linear asset events, outside the standard dispatch loop.</div>
+      <div class="tp-list">
+        ${myOther.map(nl=>`<button type="button" class="tp-card other" data-tp="${nl.id}">
+            <div><div class="tp-num">⎇ NON-LINEAR</div><div class="tp-title">${nl.title}</div><div class="tp-loc">${nl.location}</div></div>
+            <div class="arrow">→</div>
+          </button>`).join('')}
+      </div>
+    </div>` : ''}
+    <footer>TFS LOGISTICS — STATE HELD ON THIS DEVICE</footer>
+  `;
+}
+function bindShellPicker(){
+  document.getElementById('logoutBtn').addEventListener('click', ()=>{ S.session=null; apiToken=null; sessionStorage.removeItem('tfs_token'); render(); });
+  document.querySelectorAll('.tp-card[data-tp]').forEach(card=>{
+    card.addEventListener('click', ()=>{ activeTP = card.dataset.tp; render(); });
+  });
+}
+
+function renderShellTP(){
+  const roleDef = ROLES.find(r=>r.id===S.session.role);
+  const fns = { tp1:renderTP1, tp2:renderTP2, tp3:renderTP3, tp4:renderTP4, tp5:renderTP5, tp6:renderTP6, tp7:renderTP7, wsw1:renderWSW1, wsw2:renderWSW2, damaged:renderDamaged, maint:renderMaint, gls:renderGls, interdc:renderInterDC };
+  return `
+    <header class="top">
+      <div class="brand"><div class="mark">TFS</div><h1>TFS LOGISTICS</h1></div>
+      <div class="session-tag"><span><b>${roleDef.title}</b>${S.session.site?' · '+escapeHtml(S.session.site):''}</span></div>
+    </header>
+    <button type="button" class="back-link" id="backBtn">‹ Touch points</button>
+    <div class="panel" id="tpPanelMount">${fns[activeTP] ? fns[activeTP]() : ''}</div>
+    <footer>TFS LOGISTICS — STATE HELD ON THIS DEVICE</footer>
+  `;
+}
+function bindShellTP(){
+  document.getElementById('backBtn').addEventListener('click', ()=>{ activeTP = null; render(); });
+  const binds = { tp1:bindTP1, tp2:bindTP2, tp3:bindTP3, tp4:bindTP4, tp5:bindTP5, tp6:bindTP6, tp7:bindTP7, wsw1:bindWSW1, wsw2:bindWSW2, damaged:bindDamaged, maint:bindMaint, gls:bindGls, interdc:bindInterDC };
+  if(binds[activeTP]) binds[activeTP]();
+}
+function refreshTPPanel(){
+  const mount = document.getElementById('tpPanelMount');
+  const fns = { tp1:renderTP1, tp2:renderTP2, tp3:renderTP3, tp4:renderTP4, tp5:renderTP5, tp6:renderTP6, tp7:renderTP7, wsw1:renderWSW1, wsw2:renderWSW2, damaged:renderDamaged, maint:renderMaint, gls:renderGls, interdc:renderInterDC };
+  mount.innerHTML = fns[activeTP] ? fns[activeTP]() : '';
+  const binds = { tp1:bindTP1, tp2:bindTP2, tp3:bindTP3, tp4:bindTP4, tp5:bindTP5, tp6:bindTP6, tp7:bindTP7, wsw1:bindWSW1, wsw2:bindWSW2, damaged:bindDamaged, maint:bindMaint, gls:bindGls, interdc:bindInterDC };
+  if(binds[activeTP]) binds[activeTP]();
+}
+
+/* ---- shared scan-row UI ---- */
+function scanRowHtml(inputId, camId){
+  return `<div class="scan-row"><input id="${inputId}" type="text" placeholder="Scan or type barcode…" autocomplete="off" autofocus />
+    <button class="btn" id="${camId}">⌗ Camera</button></div>`;
+}
+function bindScanRow(inputId, camId, onSubmit){
+  const input = document.getElementById(inputId);
+  input.focus();
+  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ onSubmit(input.value); input.value=''; } });
+  document.getElementById(camId).addEventListener('click', ()=> openScanner((text)=>{ onSubmit(text); }));
+}
+/* Fill-only variant: scanning (Enter or camera) just populates the field —
+   used where a second field (reason/destination) still needs to be set
+   before the operator taps a separate confirm button. */
+function bindScanFillOnly(inputId, camId){
+  const input = document.getElementById(inputId);
+  input.focus();
+  document.getElementById(camId).addEventListener('click', ()=> openScanner((text)=>{ input.value = text; }));
+}
+
+/* ---- TP1: DC Dispatch Open — simplified: scan-as-you-go, no upfront checklist ---- */
+function renderTP1(){
+  const buf = scanBuffer.tp1 = scanBuffer.tp1 || { scanned:[] };
+  const scannedCount = buf.scanned.length;
+  return `<h2>TP1 — Dispatch Open</h2>
+    <div class="desc">Scan each asset as you load it for dispatch. Nothing to set up first — just scan.</div>
+    ${scanRowHtml('tp1Input','tp1Cam')}
+    <div class="asset-pill-grid">${buf.scanned.map(id=>`<span class="apill scanned">${id}</span>`).join('') || '<span class="empty-note">No scans yet.</span>'}</div>
+    <div style="margin-top:14px;display:flex;gap:8px;">
+      <button class="btn primary" id="tp1Open" ${scannedCount?'':'disabled'}>Open dispatch (${scannedCount})</button>
+    </div>`;
+}
+function bindTP1(){
+  const buf = scanBuffer.tp1;
+  bindScanRow('tp1Input','tp1Cam', (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    const asset = findAsset(id);
+    if(!asset){ showToast('Unknown barcode.', true); return; }
+    if(asset.homeDC !== S.session.site || asset.status !== 'Available at DC'){ showToast('Not available at this DC.', true); return; }
+    if(buf.scanned.includes(id)){ showToast('Already scanned.', true); return; }
+    buf.scanned.push(id);
+    refreshTPPanel();
+  });
+  const openBtn = document.getElementById('tp1Open');
+  if(openBtn) openBtn.addEventListener('click', async ()=>{
+    openBtn.disabled = true;
+    try{
+      const result = await apiPost('/api/touchpoints/tp1-open', { siteCode: S.session.site, assetIds: buf.scanned.slice() });
+      showToast('Dispatch opened: ' + result.manifestId);
+      scanBuffer.tp1 = null;
+      await syncStateFromApi();
+      activeTP = null; render();
+    }catch(err){
+      showToast(err.message, true);
+      openBtn.disabled = false;
+    }
+  });
+}
+
+/* ---- TP2: DC Dispatch Close ---- */
+function renderTP2(){
+  const buf = scanBuffer.tp2 = scanBuffer.tp2 || { manifestId:null, scanned:[], hub:null };
+  const openManifests = S.manifests.filter(m=>m.kind==='dispatch' && m.stage===1 && m.originDC===S.session.site);
+  if(!buf.manifestId && openManifests.length===1){ buf.manifestId = openManifests[0].id; }
+  if(!buf.manifestId){
+    if(openManifests.length===0) return `<h2>TP2 — Dispatch Close</h2><div class="empty-note">No open dispatch waiting to be closed.</div>`;
+    return `<h2>TP2 — Dispatch Close</h2><div class="tp-pick-list">${openManifests.map(m=>`<button type="button" class="tp-pick" data-pick="${m.id}"><div class="pk-id">${m.id}</div><div class="pk-sub">${m.expected.length} assets</div></button>`).join('')}</div>`;
+  }
+  const m = findManifest(buf.manifestId);
+  const missing = m.expected.filter(id=>!buf.scanned.includes(id));
+  const extra = buf.scanned.filter(id=>!m.expected.includes(id));
+  return `<h2>TP2 — Dispatch Close</h2>
+    <div class="desc">${m.id} · confirm everything is loaded onto the TDT vehicle.</div>
+    <div class="field"><label>Destination hub</label><select id="tp2Hub">${HUB_SITES.map(h=>`<option value="${h}">${h}</option>`).join('')}</select></div>
+    ${scanRowHtml('tp2Input','tp2Cam')}
+    <div class="asset-pill-grid">
+      ${m.expected.map(id=>`<span class="apill ${buf.scanned.includes(id)?'scanned':'pending'}">${id}</span>`).join('')}
+      ${extra.map(id=>`<span class="apill unexpected">${id}</span>`).join('')}
+    </div>
+    ${missing.length ? `<div class="alert warn">${missing.length} not yet scanned.</div>` : `<div class="alert ok">All matched.</div>`}
+    <div style="margin-top:14px;"><button class="btn primary block" id="tp2Close">Close &amp; lock</button></div>`;
+}
+function bindTP2(){
+  const buf = scanBuffer.tp2;
+  if(!buf.manifestId){ document.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click', ()=>{ buf.manifestId=b.dataset.pick; buf.scanned=[]; refreshTPPanel(); })); return; }
+  bindScanRow('tp2Input','tp2Cam', (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    if(!findAsset(id)){ showToast('Unknown barcode.', true); return; }
+    if(buf.scanned.includes(id)){ showToast('Already scanned.', true); return; }
+    buf.scanned.push(id); refreshTPPanel();
+  });
+  const closeBtn = document.getElementById('tp2Close');
+  closeBtn.addEventListener('click', async ()=>{
+    closeBtn.disabled = true;
+    const destinationHubCode = document.getElementById('tp2Hub').value;
+    try{
+      const result = await apiPost('/api/touchpoints/tp2-close', { manifestId: buf.manifestId, destinationHubCode, scannedAssetIds: buf.scanned.slice() });
+      showToast('Closed & locked: ' + buf.manifestId + (result.missing.length ? ` (${result.missing.length} missing, flagged outstanding)` : ''));
+      scanBuffer.tp2 = null;
+      await syncStateFromApi();
+      activeTP = null; render();
+    }catch(err){
+      showToast(err.message, true);
+      closeBtn.disabled = false;
+    }
+  });
+}
+
+/* ---- TP3: TDT Dispatch Intake ---- */
+function renderTP3(){
+  const buf = scanBuffer.tp3 = scanBuffer.tp3 || { manifestId:null, scanned:[] };
+  const incoming = S.manifests.filter(m=>m.kind==='dispatch' && m.stage===2);
+  if(!buf.manifestId && incoming.length===1){ buf.manifestId = incoming[0].id; }
+  if(!buf.manifestId){
+    if(incoming.length===0) return `<h2>TP3 — TDT Intake</h2><div class="empty-note">No manifests waiting for intake.</div>`;
+    return `<h2>TP3 — TDT Intake</h2><div class="tp-pick-list">${incoming.map(m=>`<button type="button" class="tp-pick" data-pick="${m.id}"><div class="pk-id">${m.id}</div><div class="pk-sub">From ${m.originDC} · ${m.expected.length} assets</div></button>`).join('')}</div>`;
+  }
+  const m = findManifest(buf.manifestId);
+  const pending = m.expected.filter(id=>!buf.scanned.includes(id));
+  return `<h2>TP3 — TDT Intake</h2>
+    <div class="desc">${m.id} from ${m.originDC}. Scan as loaded onto the vehicle.</div>
+    ${scanRowHtml('tp3Input','tp3Cam')}
+    <div class="asset-pill-grid">${m.expected.map(id=>`<span class="apill ${buf.scanned.includes(id)?'scanned':'pending'}">${id}</span>`).join('')}</div>
+    ${pending.length ? `<div class="alert info">${pending.length} pending.</div>` : `<div class="alert ok">All matched.</div>`}
+    <div style="margin-top:14px;"><button class="btn primary block" id="tp3Confirm">Confirm intake</button></div>`;
+}
+function bindTP3(){
+  const buf = scanBuffer.tp3;
+  if(!buf.manifestId){ document.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click', ()=>{ buf.manifestId=b.dataset.pick; buf.scanned=[]; refreshTPPanel(); })); return; }
+  const m = findManifest(buf.manifestId);
+  bindScanRow('tp3Input','tp3Cam', (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    if(!m.expected.includes(id)){ showToast('Not on this manifest.', true); return; }
+    if(buf.scanned.includes(id)){ showToast('Already scanned.', true); return; }
+    buf.scanned.push(id); refreshTPPanel();
+  });
+  const confirmBtn3 = document.getElementById('tp3Confirm');
+  confirmBtn3.addEventListener('click', async ()=>{
+    confirmBtn3.disabled = true;
+    try{
+      const result = await apiPost('/api/touchpoints/tp3-intake', { manifestId: buf.manifestId, scannedAssetIds: buf.scanned.slice() });
+      showToast('Intake confirmed: ' + buf.manifestId + (result.pending.length ? ` (${result.pending.length} pending, flagged)` : ''));
+      scanBuffer.tp3 = null;
+      await syncStateFromApi();
+      activeTP = null; render();
+    }catch(err){
+      showToast(err.message, true);
+      confirmBtn3.disabled = false;
+    }
+  });
+}
+
+/* ---- TP4: TDT Dispatch Loaded ---- */
+function renderTP4(){
+  const buf = scanBuffer.tp4 = scanBuffer.tp4 || { manifestId:null, notLoaded:{} };
+  const ready = S.manifests.filter(m=>m.kind==='dispatch' && m.stage===3);
+  if(!buf.manifestId && ready.length===1){ buf.manifestId = ready[0].id; }
+  if(!buf.manifestId){
+    if(ready.length===0) return `<h2>TP4 — Dispatch Loaded</h2><div class="empty-note">Nothing ready for final confirmation.</div>`;
+    return `<h2>TP4 — Dispatch Loaded</h2><div class="tp-pick-list">${ready.map(m=>`<button type="button" class="tp-pick" data-pick="${m.id}"><div class="pk-id">${m.id}</div><div class="pk-sub">${m.expected.length} assets</div></button>`).join('')}</div>`;
+  }
+  const m = findManifest(buf.manifestId);
+  const outstanding = m.expected.filter(id=>{ const a=findAsset(id); return a.outstanding && !buf.notLoaded[id]; });
+  return `<h2>TP4 — Dispatch Loaded</h2>
+    <div class="desc">${m.id} · final check before departure.</div>
+    <div class="asset-pill-grid">${m.expected.map(id=>{
+      const a = findAsset(id);
+      const cls = buf.notLoaded[id] ? 'unexpected' : (a.outstanding ? 'pending' : 'scanned');
+      return `<span class="apill ${cls}">${id}${buf.notLoaded[id]?' — '+buf.notLoaded[id]:''}</span>`;
+    }).join('')}</div>
+    ${outstanding.length ? `<div class="alert warn">${outstanding.length} missing — pick a reason to proceed.</div>
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">
+        ${outstanding.map(id=>`<select data-reason="${id}"><option value="">${id} — reason…</option><option>Damaged</option><option>Left behind</option><option>Wrong manifest</option><option>Other</option></select>`).join('')}
+      </div>` : `<div class="alert ok">All accounted for.</div>`}
+    <div style="margin-top:14px;"><button class="btn primary block" id="tp4Confirm">Confirm load</button></div>`;
+}
+function bindTP4(){
+  const buf = scanBuffer.tp4;
+  if(!buf.manifestId){ document.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click', ()=>{ buf.manifestId=b.dataset.pick; buf.notLoaded={}; refreshTPPanel(); })); return; }
+  document.querySelectorAll('[data-reason]').forEach(sel=> sel.addEventListener('change', ()=>{ if(sel.value) buf.notLoaded[sel.dataset.reason]=sel.value; refreshTPPanel(); }));
+  const confirmBtn4 = document.getElementById('tp4Confirm');
+  confirmBtn4.addEventListener('click', async ()=>{
+    const m = findManifest(buf.manifestId);
+    const stillMissing = m.expected.filter(id=>{ const a=findAsset(id); return a.outstanding && !buf.notLoaded[id]; });
+    if(stillMissing.length){ showToast('Assign a reason to every missing asset.', true); return; }
+    confirmBtn4.disabled = true;
+    try{
+      const result = await apiPost('/api/touchpoints/tp4-loaded', { manifestId: buf.manifestId, notLoadedReasons: buf.notLoaded });
+      showToast('Loaded. ' + result.ePodId + ' generated.');
+      scanBuffer.tp4 = null;
+      await syncStateFromApi();
+      activeTP = null; render();
+    }catch(err){
+      showToast(err.message, true);
+      confirmBtn4.disabled = false;
+    }
+  });
+}
+
+/* ---- TP5: Hub Intake ---- */
+function renderTP5(){
+  const buf = scanBuffer.tp5 = scanBuffer.tp5 || { manifestId:null, scanned:[], unexpected:[] };
+  const incoming = S.manifests.filter(m=>m.kind==='dispatch' && m.stage===4 && m.destinationHub===S.session.site);
+  if(!buf.manifestId && incoming.length===1){ buf.manifestId = incoming[0].id; }
+  if(!buf.manifestId){
+    if(incoming.length===0) return `<h2>TP5 — Hub Intake</h2><div class="empty-note">No inbound manifests expected here.</div>`;
+    return `<h2>TP5 — Hub Intake</h2><div class="tp-pick-list">${incoming.map(m=>`<button type="button" class="tp-pick" data-pick="${m.id}"><div class="pk-id">${m.id}</div><div class="pk-sub">From ${m.originDC}</div></button>`).join('')}</div>`;
+  }
+  const m = findManifest(buf.manifestId);
+  const pending = m.expected.filter(id=>!buf.scanned.includes(id));
+  return `<h2>TP5 — Hub Intake</h2>
+    <div class="desc">${m.id} arriving at ${S.session.site}.</div>
+    ${scanRowHtml('tp5Input','tp5Cam')}
+    <div class="asset-pill-grid">
+      ${m.expected.map(id=>`<span class="apill ${buf.scanned.includes(id)?'scanned':'pending'}">${id}</span>`).join('')}
+      ${buf.unexpected.map(id=>`<span class="apill unexpected">${id}</span>`).join('')}
+    </div>
+    ${pending.length ? `<div class="alert info">${pending.length} pending.</div>` : `<div class="alert ok">All matched.</div>`}
+    <div style="margin-top:14px;"><button class="btn primary block" id="tp5Confirm">Confirm hub intake</button></div>`;
+}
+function bindTP5(){
+  const buf = scanBuffer.tp5;
+  if(!buf.manifestId){ document.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click', ()=>{ buf.manifestId=b.dataset.pick; buf.scanned=[]; buf.unexpected=[]; refreshTPPanel(); })); return; }
+  const m = findManifest(buf.manifestId);
+  bindScanRow('tp5Input','tp5Cam', (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    if(!findAsset(id)){ showToast('Unknown barcode.', true); return; }
+    if(m.expected.includes(id)){ if(!buf.scanned.includes(id)) buf.scanned.push(id); else showToast('Already scanned.', true); }
+    else { if(!buf.unexpected.includes(id)) buf.unexpected.push(id); showToast('Unexpected arrival — flagged.', true); }
+    refreshTPPanel();
+  });
+  const confirmBtn5 = document.getElementById('tp5Confirm');
+  confirmBtn5.addEventListener('click', async ()=>{
+    confirmBtn5.disabled = true;
+    try{
+      const result = await apiPost('/api/touchpoints/tp5-hub-intake', { manifestId: buf.manifestId, scannedAssetIds: buf.scanned.slice() });
+      showToast('Hub intake confirmed: ' + buf.manifestId);
+      scanBuffer.tp5 = null;
+      await syncStateFromApi();
+      activeTP = null; render();
+    }catch(err){
+      showToast(err.message, true);
+      confirmBtn5.disabled = false;
+    }
+  });
+}
+
+/* ---- TP6: Hub Empty Collection ---- */
+function renderTP6(){
+  const buf = scanBuffer.tp6 = scanBuffer.tp6 || { staged:[] };
+  const atHub = S.assets.filter(a=>a.status==='At Hub: ' + S.session.site && !a.outstanding);
+  if(atHub.length===0) return `<h2>TP6 — Empty Collection</h2><div class="empty-note">No assets at this hub to stage for return.</div>`;
+  return `<h2>TP6 — Empty Collection</h2>
+    <div class="desc">Scan each empty asset as you stage it for return.</div>
+    ${scanRowHtml('tp6Input','tp6Cam')}
+    <div class="asset-pill-grid">
+      ${atHub.map(a=>{
+        const aged = daysSince(a.hubArrivalAt) >= 7;
+        const staged = buf.staged.includes(a.id);
+        return `<span class="apill ${staged?'scanned':(aged?'priority':'pending')}">${a.id}${aged?' · '+daysSince(a.hubArrivalAt)+'d':''}</span>`;
+      }).join('')}
+    </div>
+    <div style="margin-top:14px;"><button class="btn primary block" id="tp6Confirm" ${buf.staged.length?'':'disabled'}>Generate return manifest (${buf.staged.length})</button></div>`;
+}
+function bindTP6(){
+  const buf = scanBuffer.tp6;
+  const atHub = S.assets.filter(a=>a.status==='At Hub: ' + S.session.site && !a.outstanding);
+  bindScanRow('tp6Input','tp6Cam', (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    const asset = findAsset(id);
+    if(!asset || asset.status !== 'At Hub: ' + S.session.site){ showToast('Not at this hub.', true); return; }
+    if(buf.staged.includes(id)){ showToast('Already staged.', true); return; }
+    buf.staged.push(id); refreshTPPanel();
+  });
+  const confirmBtn6 = document.getElementById('tp6Confirm');
+  if(confirmBtn6) confirmBtn6.addEventListener('click', async ()=>{
+    confirmBtn6.disabled = true;
+    try{
+      const result = await apiPost('/api/touchpoints/tp6-empty-collection', { stagedAssetIds: buf.staged.slice() });
+      showToast('Return manifest generated: ' + result.returnManifestId);
+      scanBuffer.tp6 = null;
+      await syncStateFromApi();
+      activeTP = null; render();
+    }catch(err){
+      showToast(err.message, true);
+      confirmBtn6.disabled = false;
+    }
+  });
+}
+
+/* ---- TP7: DC Return Receipt ---- */
+function renderTP7(){
+  const buf = scanBuffer.tp7 = scanBuffer.tp7 || { manifestId:null, scanned:[], routeToReturns:false };
+  const incoming = S.manifests.filter(m=>m.kind==='return' && m.stage===6);
+  if(!buf.manifestId && incoming.length===1){ buf.manifestId = incoming[0].id; }
+  if(!buf.manifestId){
+    if(incoming.length===0) return `<h2>TP7 — Return Receipt</h2><div class="empty-note">No return manifests awaiting receipt.</div>`;
+    return `<h2>TP7 — Return Receipt</h2><div class="tp-pick-list">${incoming.map(m=>`<button type="button" class="tp-pick" data-pick="${m.id}"><div class="pk-id">${m.id}</div><div class="pk-sub">From ${m.originHub} · ${m.expected.length} assets</div></button>`).join('')}</div>`;
+  }
+  const m = findManifest(buf.manifestId);
+  const outstanding = m.expected.filter(id=>!buf.scanned.includes(id));
+  return `<h2>TP7 — Return Receipt</h2>
+    <div class="desc">${m.id} returning from ${m.originHub}.</div>
+    ${scanRowHtml('tp7Input','tp7Cam')}
+    <div class="asset-pill-grid">${m.expected.map(id=>`<span class="apill ${buf.scanned.includes(id)?'scanned':'pending'}">${id}</span>`).join('')}</div>
+    ${outstanding.length ? `<div class="alert warn">${outstanding.length} not yet returned — will be flagged outstanding.</div>` : `<div class="alert ok">All matched.</div>`}
+    <div style="margin-top:14px;"><button class="btn primary block" id="tp7Confirm">Confirm return receipt at ${escapeHtml(S.session.site)}</button></div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--violet);">
+      <div class="desc" style="margin-bottom:8px;">⎇ Non-standard path: not going back to this DC?</div>
+      <div class="field"><label>Route to returns facility instead</label><select id="tp7ReturnsFacility">${RETURNS_SITES.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+      <button class="btn block" id="tp7RouteReturns">Route to returns facility</button>
+    </div>`;
+}
+function bindTP7(){
+  const buf = scanBuffer.tp7;
+  if(!buf.manifestId){ document.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click', ()=>{ buf.manifestId=b.dataset.pick; buf.scanned=[]; refreshTPPanel(); })); return; }
+  const m = findManifest(buf.manifestId);
+  bindScanRow('tp7Input','tp7Cam', (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    if(!m.expected.includes(id)){ showToast('Not on this return manifest.', true); return; }
+    if(buf.scanned.includes(id)){ showToast('Already scanned.', true); return; }
+    buf.scanned.push(id); refreshTPPanel();
+  });
+  function commitReturn(destination, isReturnsFacility){
+    return apiPost('/api/touchpoints/tp7-return-receipt', { manifestId: buf.manifestId, scannedAssetIds: buf.scanned.slice(), destinationCode: destination, isReturnsFacility });
+  }
+  document.getElementById('tp7Confirm').addEventListener('click', async (e)=>{
+    e.target.disabled = true;
+    try{
+      await commitReturn(S.session.site, false);
+      showToast('Return receipt confirmed: ' + buf.manifestId);
+      scanBuffer.tp7 = null;
+      await syncStateFromApi();
+      activeTP = null; render();
+    }catch(err){
+      showToast(err.message, true);
+      e.target.disabled = false;
+    }
+  });
+  document.getElementById('tp7RouteReturns').addEventListener('click', async (e)=>{
+    e.target.disabled = true;
+    const facility = document.getElementById('tp7ReturnsFacility').value;
+    try{
+      await commitReturn(facility, true);
+      showToast('Routed to returns facility: ' + facility);
+      scanBuffer.tp7 = null;
+      await syncStateFromApi();
+      activeTP = null; render();
+    }catch(err){
+      showToast(err.message, true);
+      e.target.disabled = false;
+    }
+  });
+}
+
+/* =========================================================
+   WSW — Wrong Source Warehouse (misrouted stock, intake + sort)
+   ========================================================= */
+
+/* ---- WSW1: WSW Intake ---- */
+function renderWSW1(){
+  const buf = scanBuffer.wsw1 = scanBuffer.wsw1 || { log:[] };
+  return `<h2>WSW1 — WSW Intake</h2>
+    <div class="desc">Scan any asset that has physically arrived here from another DC via the wrong-source route. It doesn't need to be expected — this catches misrouted stock.</div>
+    ${scanRowHtml('wsw1Input','wsw1Cam')}
+    ${buf.log.length ? `<div style="margin-top:12px;"><div class="desc" style="margin-bottom:6px;">This session:</div>
+      <div class="asset-pill-grid">${buf.log.map(id=>`<span class="apill scanned">${id}</span>`).join('')}</div></div>` : ''}`;
+}
+function bindWSW1(){
+  const buf = scanBuffer.wsw1;
+  bindScanRow('wsw1Input','wsw1Cam', async (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    try{
+      await apiPost('/api/touchpoints/wsw1-intake', { assetId: id });
+      showToast(id + ' received into WSW.');
+      buf.log.push(id);
+      await syncStateFromApi();
+      refreshTPPanel();
+    }catch(err){
+      showToast(err.message, true);
+    }
+  });
+}
+
+/* ---- WSW2: WSW Sort & Process ---- */
+function renderWSW2(){
+  const atWSW = S.assets.filter(a=>a.status==='At WSW: ' + S.session.site);
+  return `<h2>WSW2 — WSW Sort & Process</h2>
+    <div class="desc">Scan each sorted asset to release it into this DC's active stock, ready for normal dispatch out to hubs.</div>
+    <div class="desc" style="margin-top:10px;margin-bottom:6px;">Currently at WSW, ${escapeHtml(S.session.site)}:</div>
+    <div class="asset-pill-grid">${atWSW.map(a=>`<span class="apill pending">${a.id}</span>`).join('') || '<span class="empty-note">None.</span>'}</div>
+    ${scanRowHtml('wsw2Input','wsw2Cam')}`;
+}
+function bindWSW2(){
+  bindScanRow('wsw2Input','wsw2Cam', async (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    try{
+      await apiPost('/api/touchpoints/wsw2-sort', { assetId: id });
+      showToast(id + ' sorted and released to DC stock.');
+      await syncStateFromApi();
+      refreshTPPanel();
+    }catch(err){
+      showToast(err.message, true);
+    }
+  });
+}
+
+/* =========================================================
+   NON-LINEAR FLOWS — beyond the 7 touch points
+   ========================================================= */
+
+/* ---- Damaged Asset Scan-Out (TDT) ---- */
+function renderDamaged(){
+  const buf = scanBuffer.damaged = scanBuffer.damaged || { log:[] };
+  return `<h2>Damaged Asset Scan-Out</h2>
+    <div class="desc">Scan a Rolltainer out as damaged/unusable. It's removed from the active fleet for write-off or scrapping.</div>
+    ${scanRowHtml('damagedInput','damagedCam')}
+    <div class="field"><label>Damage note</label><input id="damagedNote" type="text" placeholder="e.g. Cracked frame, wheel missing" /></div>
+    <button class="btn primary block" id="damagedConfirm">Mark damaged &amp; scan out</button>
+    ${buf.log.length ? `<div style="margin-top:14px;"><div class="desc" style="margin-bottom:6px;">This session:</div>
+      <div class="asset-pill-grid">${buf.log.map(id=>`<span class="apill unexpected">${id}</span>`).join('')}</div></div>` : ''}`;
+}
+function bindDamaged(){
+  const buf = scanBuffer.damaged;
+  document.getElementById('damagedConfirm').addEventListener('click', async ()=>{
+    const id = document.getElementById('damagedInput').value.trim();
+    const note = document.getElementById('damagedNote').value.trim() || 'No note provided';
+    if(!id){ showToast('Scan or enter a barcode first.', true); return; }
+    try{
+      await apiPost('/api/touchpoints/damaged-scan-out', { assetId: id, note });
+      showToast(id + ' marked damaged.');
+      buf.log.push(id);
+      document.getElementById('damagedInput').value = ''; document.getElementById('damagedNote').value = '';
+      await syncStateFromApi();
+      refreshTPPanel();
+    }catch(err){
+      showToast(err.message, true);
+    }
+  });
+  bindScanFillOnly('damagedInput','damagedCam');
+}
+
+/* ---- Maintenance Scan-Out / Scan-In (DC) ---- */
+function renderMaint(){
+  const inMaint = S.assets.filter(a=>a.status==='In Maintenance' && a.homeDC===S.session.site);
+  return `<h2>Maintenance</h2>
+    <div class="desc">Scan out a Rolltainer going for repair/service, or scan one back in once it's fixed.</div>
+    <h3 style="font-family:var(--font-display);font-size:14px;margin:14px 0 8px;">Scan out for maintenance</h3>
+    ${scanRowHtml('maintOutInput','maintOutCam')}
+    <div class="field"><label>Reason</label><input id="maintReason" type="text" placeholder="e.g. Wheel replacement" /></div>
+    <button class="btn primary block" id="maintOutConfirm">Send to maintenance</button>
+    <h3 style="font-family:var(--font-display);font-size:14px;margin:20px 0 8px;">Currently in maintenance at ${escapeHtml(S.session.site)}</h3>
+    <div class="asset-pill-grid">${inMaint.map(a=>`<span class="apill pending">${a.id}</span>`).join('') || '<span class="empty-note">None.</span>'}</div>
+    ${scanRowHtml('maintInInput','maintInCam')}
+    <button class="btn block" id="maintInConfirm">Scan in — repaired</button>`;
+}
+function bindMaint(){
+  bindScanFillOnly('maintOutInput','maintOutCam');
+  document.getElementById('maintOutConfirm').addEventListener('click', async ()=>{
+    const id = document.getElementById('maintOutInput').value.trim();
+    const reason = document.getElementById('maintReason').value.trim() || 'No reason provided';
+    if(!id){ showToast('Scan or enter a barcode first.', true); return; }
+    try{
+      await apiPost('/api/touchpoints/maintenance-out', { assetId: id, reason });
+      showToast(id + ' sent to maintenance.');
+      document.getElementById('maintOutInput').value = ''; document.getElementById('maintReason').value = '';
+      await syncStateFromApi();
+      refreshTPPanel();
+    }catch(err){ showToast(err.message, true); }
+  });
+  bindScanRow('maintInInput','maintInCam', async (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    try{
+      await apiPost('/api/touchpoints/maintenance-in', { assetId: id });
+      showToast(id + ' returned to active fleet.');
+      await syncStateFromApi();
+      refreshTPPanel();
+    }catch(err){ showToast(err.message, true); }
+  });
+}
+
+/* ---- GLS Vendor Custody (DC) ---- */
+function renderGls(){
+  const withGls = S.assets.filter(a=>a.status.startsWith('With GLS Vendor'));
+  return `<h2>GLS Vendor Custody</h2>
+    <div class="desc">Scan a Rolltainer out to a GLS site, or scan one back in when it's returned.</div>
+    <h3 style="font-family:var(--font-display);font-size:14px;margin:14px 0 8px;">Transfer out to GLS</h3>
+    ${scanRowHtml('glsOutInput','glsOutCam')}
+    <div class="field"><label>GLS site</label><select id="glsSite">${GLS_SITES.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+    <button class="btn primary block" id="glsOutConfirm">Transfer to GLS custody</button>
+    <h3 style="font-family:var(--font-display);font-size:14px;margin:20px 0 8px;">Currently with GLS</h3>
+    <div class="asset-pill-grid">${withGls.map(a=>`<span class="apill pending">${a.id} — ${a.status.replace('With GLS Vendor: ','')}</span>`).join('') || '<span class="empty-note">None.</span>'}</div>
+    ${scanRowHtml('glsInInput','glsInCam')}
+    <button class="btn block" id="glsInConfirm">Scan in — returned from GLS</button>`;
+}
+function bindGls(){
+  bindScanFillOnly('glsOutInput','glsOutCam');
+  document.getElementById('glsOutConfirm').addEventListener('click', async ()=>{
+    const id = document.getElementById('glsOutInput').value.trim();
+    const site = document.getElementById('glsSite').value;
+    if(!id){ showToast('Scan or enter a barcode first.', true); return; }
+    try{
+      await apiPost('/api/touchpoints/gls-out', { assetId: id, glsSite: site });
+      showToast(id + ' transferred to ' + site + '.');
+      document.getElementById('glsOutInput').value = '';
+      await syncStateFromApi();
+      refreshTPPanel();
+    }catch(err){ showToast(err.message, true); }
+  });
+  bindScanRow('glsInInput','glsInCam', async (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    try{
+      await apiPost('/api/touchpoints/gls-in', { assetId: id });
+      showToast(id + ' returned from GLS custody.');
+      await syncStateFromApi();
+      refreshTPPanel();
+    }catch(err){ showToast(err.message, true); }
+  });
+}
+
+/* ---- Inter-DC Transfer (DC) ---- */
+function renderInterDC(){
+  const incoming = S.assets.filter(a=>a.transferTo===S.session.site && a.status.startsWith('Inter-DC Transfer to'));
+  const otherDCs = DC_SITES.filter(d=>d!==S.session.site);
+  return `<h2>Inter-DC Transfer</h2>
+    <div class="desc">Rebalance stock between DCs. Scan out here, scan in at the receiving DC.</div>
+    <h3 style="font-family:var(--font-display);font-size:14px;margin:14px 0 8px;">Scan out to another DC</h3>
+    ${scanRowHtml('interdcOutInput','interdcOutCam')}
+    <div class="field"><label>Destination DC</label><select id="interdcToDC">${otherDCs.map(d=>`<option value="${d}">${d}</option>`).join('')}</select></div>
+    <button class="btn primary block" id="interdcOutConfirm">Transfer out</button>
+    <h3 style="font-family:var(--font-display);font-size:14px;margin:20px 0 8px;">Inbound to ${escapeHtml(S.session.site)}</h3>
+    <div class="asset-pill-grid">${incoming.map(a=>`<span class="apill pending">${a.id}</span>`).join('') || '<span class="empty-note">None in transit here.</span>'}</div>
+    ${scanRowHtml('interdcInInput','interdcInCam')}
+    <button class="btn block" id="interdcInConfirm">Scan in — arrived</button>`;
+}
+function bindInterDC(){
+  bindScanFillOnly('interdcOutInput','interdcOutCam');
+  document.getElementById('interdcOutConfirm').addEventListener('click', async ()=>{
+    const id = document.getElementById('interdcOutInput').value.trim();
+    const toDC = document.getElementById('interdcToDC').value;
+    if(!id){ showToast('Scan or enter a barcode first.', true); return; }
+    if(!toDC){ showToast('No other DC to transfer to.', true); return; }
+    try{
+      await apiPost('/api/touchpoints/interdc-out', { assetId: id, toSiteCode: toDC });
+      showToast(id + ' transferred out to ' + toDC + '.');
+      document.getElementById('interdcOutInput').value = '';
+      await syncStateFromApi();
+      refreshTPPanel();
+    }catch(err){ showToast(err.message, true); }
+  });
+  bindScanRow('interdcInInput','interdcInCam', async (raw)=>{
+    const id = raw.trim(); if(!id) return;
+    try{
+      await apiPost('/api/touchpoints/interdc-in', { assetId: id });
+      showToast(id + ' received — added to active fleet here.');
+      await syncStateFromApi();
+      refreshTPPanel();
+    }catch(err){ showToast(err.message, true); }
+  });
+}
+
+/* ---------------------------------------------------------------------
+   Camera barcode scan
+   --------------------------------------------------------------------- */
+let zxingReader = null;
+let scanCallback = null;
+function scanSupported(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && typeof ZXing !== "undefined"; }
+async function openScanner(onResult){
+  scanCallback = onResult;
+  const overlay = document.getElementById("scanOverlay");
+  const statusEl = document.getElementById("scanStatus");
+  const video = document.getElementById("scanVideo");
+  overlay.style.display = "flex";
+  statusEl.style.color = "var(--text-dim)"; statusEl.textContent = "Requesting camera access…";
+  if(!scanSupported()){ statusEl.style.color="var(--red)"; statusEl.textContent="Camera scanning isn't available in this browser."; return; }
+  if(location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1"){
+    statusEl.style.color="var(--red)"; statusEl.textContent="Camera access needs HTTPS."; return;
+  }
+  try{
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.DATA_MATRIX]);
+    zxingReader = new ZXing.BrowserMultiFormatReader(hints);
+    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+    const backCam = devices.find(d=>/back|rear|environment/i.test(d.label)) || devices[devices.length-1];
+    statusEl.textContent = "Looking for a barcode…";
+    zxingReader.decodeFromVideoDevice(backCam?backCam.deviceId:undefined, video, (result)=>{
+      if(result){
+        const text = result.getText();
+        statusEl.style.color="var(--green)"; statusEl.textContent="Got it: " + text;
+        setTimeout(()=>{ closeScanner(); if(scanCallback) scanCallback(text); }, 350);
+      }
+    });
+  }catch(err){
+    statusEl.style.color="var(--red)";
+    if(err && err.name==="NotAllowedError") statusEl.textContent="Camera permission denied.";
+    else if(err && err.name==="NotFoundError") statusEl.textContent="No camera found.";
+    else statusEl.textContent="Couldn't start the camera.";
+  }
+}
+function closeScanner(){
+  document.getElementById("scanOverlay").style.display = "none";
+  if(zxingReader){ try{ zxingReader.reset(); }catch(e){} zxingReader = null; }
+  const video = document.getElementById("scanVideo");
+  if(video && video.srcObject){ video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; }
+}
+document.getElementById('scanCancel').addEventListener('click', closeScanner);
+document.getElementById('scanOverlay').addEventListener('click', (e)=>{ if(e.target.id==='scanOverlay') closeScanner(); });
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+
+render();
+</script>
+</body>
+</html>

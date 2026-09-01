@@ -1,0 +1,34 @@
+# Render Blueprint — see DEPLOYMENT.md for the full guide.
+#
+# This deploys the backend (Node web service) and the scanner frontend
+# (static site) together. Not fully hands-off: after the first deploy
+# you still need to paste the backend's live URL into the frontend
+# (DEPLOYMENT.md step 5) — Render assigns that URL only once the
+# backend service exists, so it can't be known ahead of time in this
+# file.
+#
+# Only mercury-scanner.html is wired to the backend — mercury-console.html
+# is not deployed here because it isn't retrofitted yet (still
+# localStorage-only; see the main README's "What's not done"). Deploying
+# it would just show a disconnected, static demo.
+
+services:
+  - type: web
+    name: tfs-logistics-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "npm run seed && npm start"
+    envVars:
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: DB_PATH
+        value: /tmp/tfs_logistics.db
+
+  - type: web
+    name: tfs-logistics-scanner
+    runtime: static
+    rootDir: frontend
+    staticPublishPath: .
+    buildCommand: "echo 'no build needed — static files'"

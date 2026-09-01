@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>TFS Logistics — Live API Reference Integration</title>
+<style>
+  body{ font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; background:#F4F7FB; color:#101A2B; }
+  h1{ font-size: 20px; } h2{ font-size: 15px; color:#0B63CE; margin-top: 28px; }
+  .panel{ background:#fff; border:1px solid #DCE6F2; border-radius:8px; padding:16px; margin-bottom:14px; }
+  input, select, button{ font-size:14px; padding:8px 10px; border-radius:6px; border:1px solid #DCE6F2; margin:4px 4px 4px 0; }
+  button{ background:#0B63CE; color:#fff; border:none; cursor:pointer; }
+  button:disabled{ opacity:0.4; cursor:not-allowed; }
+  pre{ background:#0F172A; color:#D1E4FF; padding:10px; border-radius:6px; font-size:12px; overflow:auto; max-height:220px; }
+  .pill{ display:inline-block; padding:3px 8px; border-radius:10px; background:#EEF3FA; font-family:monospace; font-size:12px; margin:2px; }
+  #status{ font-family: monospace; font-size: 12px; color: #5B6B82; }
+</style>
+</head>
+<body>
+  <h1>TFS Logistics — Live API Reference Integration</h1>
+  <div id="status">Not logged in.</div>
+
+  <div class="panel">
+    <h2>1. Login (real token from the backend)</h2>
+    <select id="role"><option value="DC">DC Operator</option><option value="TDT">TDT Driver</option></select>
+    <input id="site" placeholder="Site code, e.g. JHB-DC1" value="JHB-DC1" />
+    <input id="name" placeholder="Operator name" value="T. Nkosi" />
+    <button id="loginBtn">Log in</button>
+  </div>
+
+  <div class="panel">
+    <h2>2. TP1 — Dispatch Open</h2>
+    <input id="tp1Assets" placeholder="Asset IDs, comma-separated" value="RT-100001,RT-100002" />
+    <button id="tp1Btn" disabled>Open dispatch</button>
+    <div id="tp1Result"></div>
+  </div>
+
+  <div class="panel">
+    <h2>3. TP2 — Dispatch Close</h2>
+    <input id="tp2Hub" placeholder="Destination hub code" value="Alberton (ALB)" />
+    <input id="tp2Assets" placeholder="Scanned asset IDs" value="RT-100001" />
+    <button id="tp2Btn" disabled>Close dispatch</button>
+    <div id="tp2Result"></div>
+  </div>
+
+  <div class="panel">
+    <h2>4. Dashboard summary (live from the backend)</h2>
+    <button id="dashBtn" disabled>Refresh</button>
+    <pre id="dashResult">—</pre>
+  </div>
+
+  <script src="api-client.js"></script>
+  <script>
+    let lastManifestId = null;
+    const statusEl = document.getElementById('status');
+
+    function setLoggedInUI() {
+      document.getElementById('tp1Btn').disabled = false;
+      document.getElementById('tp2Btn').disabled = false;
+      document.getElementById('dashBtn').disabled = false;
+      statusEl.textContent = 'Logged in — token: ' + TFSApi.getToken().slice(0, 24) + '…';
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      try {
+        await TFSApi.login({
+          operatorName: document.getElementById('name').value,
+          role: document.getElementById('role').value,
+          siteCode: document.getElementById('site').value,
+        });
+        setLoggedInUI();
+      } catch (err) {
+        statusEl.textContent = 'Login failed: ' + err.message;
+      }
+    });
+
+    document.getElementById('tp1Btn').addEventListener('click', async () => {
+      const assetIds = document.getElementById('tp1Assets').value.split(',').map(s => s.trim()).filter(Boolean);
+      const siteCode = document.getElementById('site').value;
+      try {
+        const result = await TFSApi.tp1Open(siteCode, assetIds);
+        lastManifestId = result.manifestId;
+        document.getElementById('tp1Result').innerHTML = `<span class="pill">manifest: ${result.manifestId}</span>`;
+      } catch (err) {
+        document.getElementById('tp1Result').textContent = 'Error: ' + err.message;
+      }
+    });
+
+    document.getElementById('tp2Btn').addEventListener('click', async () => {
+      const scannedAssetIds = document.getElementById('tp2Assets').value.split(',').map(s => s.trim()).filter(Boolean);
+      const destinationHubCode = document.getElementById('tp2Hub').value;
+      try {
+        const result = await TFSApi.tp2Close(lastManifestId, destinationHubCode, scannedAssetIds);
+        document.getElementById('tp2Result').innerHTML = `<span class="pill">missing: ${JSON.stringify(result.missing)}</span>`;
+      } catch (err) {
+        document.getElementById('tp2Result').textContent = 'Error: ' + err.message;
+      }
+    });
+
+    document.getElementById('dashBtn').addEventListener('click', async () => {
+      try {
+        const summary = await TFSApi.getDashboardSummary();
+        document.getElementById('dashResult').textContent = JSON.stringify(summary, null, 2);
+      } catch (err) {
+        document.getElementById('dashResult').textContent = 'Error: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+# Local development stack: API + PostgreSQL + Redis, matching the
+# recommended production stack. NOT verified runnable in the environment
+# this was produced in (no Docker daemon available) — run
+# `docker compose up` yourself as the first real test of this file.
+
+version: "3.9"
+services:
+  api:
+    build: ./backend
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgres://tfs:tfs@postgres:5432/tfs_logistics
+      REDIS_URL: redis://redis:6379
+      AUTH_SECRET: local-dev-secret-do-not-use-in-production
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tfs
+      POSTGRES_PASSWORD: tfs
+      POSTGRES_DB: tfs_logistics
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:
