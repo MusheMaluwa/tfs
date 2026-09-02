@@ -1,12 +1,17 @@
-// console/components/BarcodeScanner.js
+// shared/BarcodeScanner.js
 //
-// Camera barcode capture for the "Register a new asset" field, so a
-// clerk with a laptop webcam doesn't have to key barcodes by hand.
+// Camera barcode capture. Both apps need the identical thing — the
+// console for "Register a new asset", the scanner behind the Camera
+// button on every scan row — and a camera that is not torn down
+// correctly leaks the same way in either, so it lives here rather
+// than being copied twice. It is the second genuinely shared UI
+// component, alongside Toast.
 //
-// Same hosting pattern as SiteMap: ZXing 0.21 ships UMD, so index.html
-// loads it with a <script> tag and this component reads window.ZXing.
-// It hands the <video> element to the library and stops every track on
-// unmount — a camera left streaming is the classic leak here.
+// Same hosting pattern as SiteMap: ZXing 0.21 ships UMD, so each
+// index.html loads it with a <script> tag and this component reads
+// window.ZXing. It hands the <video> element to the library and stops
+// every track on unmount — a camera left streaming is the classic
+// leak here.
 
 import React from 'react';
 const h = React.createElement;

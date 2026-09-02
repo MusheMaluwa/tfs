@@ -135,3 +135,38 @@ input:focus, select:focus{ outline:none; border-color:var(--cyan); }
 .apill.scanned{ border-color:var(--green); color:var(--green); }
 .apill.pending{ border-color:var(--line-strong); color:var(--text-dim); }
 .apill.unexpected{ border-color:var(--red); color:var(--red); }
+.apill.priority{ border-color:var(--amber); color:var(--amber); background:var(--amber-dim); }
+
+/* Sub-headings and helper labels inside a panel. The flows that scan
+   out AND back in (maintenance, GLS, inter-DC) are two half-forms in
+   one panel, and these separate them. */
+.sub-head{ font-family:var(--font-display); font-size:14px; margin:20px 0 8px; }
+.panel .desc.sub-label{ margin:12px 0 6px; }
+
+/* TP4's reason dropdowns, one per asset that never got scanned. */
+.reason-list{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.reason-list select{ width:100%; }
+
+/* TP7's returns-facility branch: visibly not the standard path. */
+.branch-block{ margin-top:16px; padding-top:14px; border-top:1px dashed var(--violet); }
+
+/* Camera scan overlay (shared/BarcodeScanner.js). The console styles
+   the same component in console.css; the two apps do not share CSS. */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(6,10,18,0.92); z-index:100;
+  display:flex; align-items:center; justify-content:center; padding:16px;
+}
+.modal-box{
+  background:var(--panel); border:1px solid var(--line-strong); border-radius:12px;
+  padding:16px; width:100%; max-width:440px;
+}
+.modal-box h3.flush{ font-family:var(--font-display); font-size:16px; margin:0 0 4px; }
+.modal-box .mb-sub{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-bottom:12px; }
+.scan-video-frame{
+  width:100%; aspect-ratio:4/3; background:#000; border-radius:9px; overflow:hidden;
+}
+.scan-video-frame video{ width:100%; height:100%; object-fit:cover; display:block; }
+.scan-status{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:10px; min-height:16px; }
+.scan-status.err{ color:var(--red); }
+.scan-actions{ display:flex; justify-content:flex-end; margin-top:10px; }
+.btn.sm{ padding:6px 10px; font-size:11.5px; }

@@ -11,7 +11,7 @@ import React from 'react';
 import { ASSET_TYPES } from './constants.js';
 import { AssetTable, FilterBar, filterAssets } from './AssetTable.js';
 import { SiteManager } from './SiteManager.js';
-import { BarcodeScanner } from './BarcodeScanner.js';
+import { BarcodeScanner } from '../../shared/BarcodeScanner.js';
 import { rollupStatus } from '../../shared/format.js';
 const h = React.createElement;
 

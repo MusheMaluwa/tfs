@@ -33,9 +33,21 @@ function jsFilesIn(dir) {
 const read = (f) => fs.readFileSync(f, 'utf8');
 const rel = (f) => path.relative(ROOT, f).replace(/\\/g, '/');
 
-/** Every `from '...'` specifier in a file. */
+/** Every module specifier a file imports.
+ *
+ *  Anchored to lines that actually begin an import/export statement,
+ *  not any `from '...'` in the file — a UI string like
+ *  `m.id, ' from ', m.origin_dc_code` otherwise reads as an import of
+ *  " from ". Every import here is a single line; a multi-line one
+ *  would need this widened. */
 function importsOf(file) {
-  return [...read(file).matchAll(/from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
+  return read(file)
+    .split(/\r?\n/)
+    .filter((line) => /^\s*(import|export)\s/.test(line))
+    .flatMap((line) => [
+      ...line.matchAll(/from\s+['"]([^'"]+)['"]/g),
+      ...line.matchAll(/^\s*import\s+['"]([^'"]+)['"]/g),
+    ].map((m) => m[1]));
 }
 
 const SCANNER_FILES = jsFilesIn('scanner');
@@ -128,20 +140,42 @@ test('each app loads the shared palette plus its own stylesheet, and no third-pa
     assert.match(html, new RegExp(own.replace('.', '\\.')), `${name} should load its own stylesheet`);
   }
 
-  // Leaflet and ZXing are desktop-console concerns. An operator's phone
-  // must never download a map library it has no screen for.
+  // Leaflet is a desktop-console concern. An operator's phone must never
+  // download a map library it has no screen for. ZXing is the opposite:
+  // the camera IS the scanner's barcode input, so both apps load it.
   assert.doesNotMatch(scanner, /leaflet/i, 'the scanner must not load Leaflet');
-  assert.doesNotMatch(scanner, /zxing/i, 'the scanner must not load ZXing');
+  assert.match(scanner, /zxing/i, 'the scanner needs ZXing for the camera scan row');
   assert.match(console_, /leaflet/i);
+  assert.match(console_, /zxing/i);
 });
 
-test('the two apps use different sessionStorage keys, so signing out of one does not sign out of the other', () => {
-  const keysIn = (file) => [...read(path.join(ROOT, file)).matchAll(/sessionStorage\.\w+\(([^,)]+)/g)].map((m) => m[1].trim());
-  const scannerKeys = read(path.join(ROOT, 'scanner/app.js')).match(/'tfs_scanner_\w+'/g) || [];
-  const consoleKeys = read(path.join(ROOT, 'console/app.js')).match(/'tfs_console_\w+'/g) || [];
+test('the scanner namespaces its own storage keys, and the console stores no session at all', () => {
+  const scannerApp = read(path.join(ROOT, 'scanner/app.js'));
+  const consoleApp = read(path.join(ROOT, 'console/app.js'));
+
+  // The scanner has a real sign-in, so its keys must not collide with
+  // anything else on the same origin.
+  const scannerKeys = scannerApp.match(/'tfs_scanner_\w+'/g) || [];
   assert.ok(scannerKeys.length >= 2, 'scanner should namespace its own token and session keys');
-  assert.ok(consoleKeys.length >= 2, 'console should namespace its own token and session keys');
-  // Neither app should reference the other's constants at all.
-  assert.equal(keysIn('scanner/app.js').filter((k) => k.includes('console')).length, 0);
-  assert.equal(keysIn('console/app.js').filter((k) => k.includes('scanner')).length, 0);
+
+  // The console has no sign-in — it authenticates itself on load and
+  // keeps the token in memory. Persisting one would be the first step
+  // back towards a login screen it is not supposed to have.
+  // Matched as a call, not a bare word — the file's header comment
+  // mentions the old localStorage prototype it replaced.
+  assert.doesNotMatch(consoleApp, /\b(session|local)Storage\s*\./,
+    'the console must not persist a session — it has no sign-in');
+});
+
+test('the console renders without any sign-in step', () => {
+  const consoleApp = read(path.join(ROOT, 'console/app.js'));
+  const files = CONSOLE_FILES.map(rel);
+
+  assert.ok(!files.includes('console/components/Login.js'),
+    'the console should have no Login component — it is open on load, like the vanilla console');
+  assert.doesNotMatch(consoleApp, /Sign out|Sign in/,
+    'no sign-in or sign-out controls belong in the console header');
+  // It still has to obtain a token, because the API requires one on
+  // every read endpoint except GET /api/sites.
+  assert.match(consoleApp, /\.login\(/, 'the console must still authenticate itself on load');
 });

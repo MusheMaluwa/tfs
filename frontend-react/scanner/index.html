@@ -19,6 +19,15 @@
   way to run React in a browser. Each app declares its own import map:
   they are independent pages that happen to pin the same version.
 -->
+<!--
+  ZXing ships UMD, not ES modules, so it loads as a classic script and
+  exposes window.ZXing. shared/BarcodeScanner.js reads that global and
+  degrades to a readable message if it never arrives. The scanner needs
+  it for the Camera button on every scan row — a phone has no handheld
+  barcode gun.
+-->
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+
 <script type="importmap">
 {
   "imports": {
