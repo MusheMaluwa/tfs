@@ -8,9 +8,9 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
-    "seed": "node src/seed.js",
+    "dev": "node --env-file-if-exists=.env --watch src/server.js",
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "seed": "node --env-file-if-exists=.env src/seed.js",
     "test": "node --test \"src/__tests__/*.test.js\"",
     "test:watch": "node --test --watch \"src/__tests__/*.test.js\"",
     "test:pg": "node scripts/require-database-url.js && node --test --test-concurrency=1 src/__tests__/stateMachine.test.js src/__tests__/api.test.js"
