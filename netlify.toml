@@ -1,0 +1,41 @@
+# Netlify deploy configuration.
+#
+# WHY THIS FILE EXISTS
+#
+# The site was configured in the Netlify UI to publish
+# `frontend-react/scanner`, one directory too deep. That puts
+# scanner/index.html at `/`, so every `../shared/` import resolves above
+# the publish root and 404s — api.js, Toast.js, BarcodeScanner.js and
+# tokens.css all missing. Netlify answers those with its own HTML 404
+# page, a browser refuses to execute HTML as an ES module, and so
+# app.js never runs: the deployed page rendered blank.
+#
+# Publishing `frontend-react` instead is the same root `serve.js` serves
+# locally and the same one render.yaml deploys, so what ships is what
+# runs on a developer's machine. Keeping this in the repository rather
+# than in the UI means the setting is reviewable and cannot silently
+# drift back.
+#
+# Layout that results:
+#   /            the signpost page, linking to both apps
+#   /scanner/    APP 1 — operators, phone
+#   /console/    APP 2 — managers, desktop
+#   /shared/     the api client, palette, toast and camera component
+#
+# THE API IT TALKS TO
+#
+# Both apps default to `http://localhost:4000` (set in each index.html)
+# and there is no localStorage fallback — every screen is API-driven. A
+# deployed frontend therefore needs a deployed backend: a public page
+# cannot reach a reviewer's own machine, and Chrome's local-network
+# access controls block a public origin from calling localhost even for
+# the person running it. `render.yaml` in this directory provisions the
+# backend and a managed PostgreSQL; point the apps at its URL once it is
+# live. Until then, run both halves locally — `npm run serve` here and
+# `npm run dev` in backend/.
+
+[build]
+  publish = "frontend-react"
+  # No build step: these are static ES modules loaded through an import
+  # map. See frontend-react/README.md for why there is no bundler.
+  command = "echo 'no build needed — static files'"
