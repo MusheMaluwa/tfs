@@ -14,15 +14,6 @@ header.top{
   padding-bottom:14px; margin-bottom:16px; border-bottom:1px solid var(--line);
   flex-wrap:wrap; gap:10px;
 }
-.session-tag{ display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
-.session-tag b{ color:var(--text); font-weight:600; }
-.session-tag button{
-  font-family:var(--font-mono); font-size:10.5px; background:transparent;
-  border:1px solid var(--line-strong); color:var(--text-dim);
-  padding:6px 10px; border-radius:6px; cursor:pointer;
-}
-.session-tag button:hover{ color:var(--text); border-color:var(--text-dim); }
-
 nav.tabs{ display:flex; gap:2px; margin-bottom:18px; border-bottom:1px solid var(--line); overflow-x:auto; }
 nav.tabs button{
   background:transparent; border:none; color:var(--text-dim);
@@ -84,21 +75,6 @@ input.grow{ flex:1; min-width:260px; }
 .mono{ font-family:var(--font-mono); }
 .mono.strong{ font-weight:600; }
 .dim{ font-size:11px; color:var(--text-dim); }
-
-/* Login (console) */
-.login-wrap{ max-width:400px; margin:60px auto 0; }
-.login-head{ text-align:center; margin-bottom:20px; }
-.login-head .mark.lg{
-  display:inline-flex; min-width:52px; height:44px; padding:0 14px; border-radius:9px;
-  background:linear-gradient(135deg,var(--amber),var(--cyan));
-  align-items:center; justify-content:center;
-  font-family:var(--font-display); font-weight:700; color:#FFF; font-size:15px; margin-bottom:10px;
-}
-.login-head h1{ font-family:var(--font-display); font-size:22px; margin:0; }
-.login-kicker{
-  font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
-  letter-spacing:1.4px; text-transform:uppercase; margin-top:4px;
-}
 
 /* Tables */
 .table-scroll{ overflow-x:auto; }
