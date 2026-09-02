@@ -26,7 +26,8 @@ node e2e/scanner-full-loop.spec.js
 # works end to end:
 node e2e/full-stack.spec.js
 
-# The React build's component-rendering tests:
+# The React build — both apps' component tests plus the architecture
+# tests that keep the two apps separate:
 cd frontend-react && npm run verify
 ```
 
@@ -63,13 +64,20 @@ described.
   complete client library and a minimal working proof of the API
   contract, kept as the smallest possible thing to point at when
   debugging the wiring itself.
-- **`frontend-react/`** — a real React 19 rewrite (hooks, real
-  `react-dom/server`-verified components) of the same app. TP1 and TP2
-  are fully ported and tested (9 passing tests); the rest follow a
-  documented pattern. See `frontend-react/README.md` — in particular
-  for why it's plain `React.createElement` rather than JSX (no bundler
-  available in this environment) and exactly what is/isn't verifiable
-  without live internet access.
+- **`frontend-react/`** — a real React 19 rewrite as **two separate
+  apps over the one backend**: `scanner/` (operators, phone) and
+  `console/` (managers, desktop). They are genuinely independent React
+  roots with no shared UI — the only thing crossing between them is
+  `shared/api.js`, the single copy of the backend contract. **50
+  passing tests**: component rendering through the real
+  `react-dom/server`, the pure logic (rollups, filtering, cycle time,
+  CSV escaping), and 10 architecture tests that fail if the two apps
+  ever start importing each other. The console is complete and fully
+  API-driven; the scanner has TP1/TP2 with a documented path for the
+  rest. See `frontend-react/README.md` — in particular for why it's
+  plain `React.createElement` rather than JSX (no bundler available in
+  this environment) and exactly what is/isn't verifiable without live
+  internet access.
 - **Two real bugs caught and fixed during this build**, both only
   found because the tests exercised real browsers/servers rather than
   stopping at unit tests: missing CORS handling on the backend (broke
@@ -94,14 +102,16 @@ available in the environment this was built in:
 
 ## What's not done
 
-- **`mercury-console.html`** (the back-office dashboard app) has
-  **not** been retrofitted — it still runs on `localStorage`. The
-  scanner app above was the priority; the console app would follow an
-  identical pattern (see `TECHNICAL-SPEC.md §7` for its function-level
-  mapping) but wasn't attempted in this pass.
-- **React**: TP3–TP7, both WSW steps, and the 4 non-linear flows are
-  not yet ported to `frontend-react/` — each shows an explicit "not
-  yet ported" placeholder rather than silently doing nothing. See
+- **`frontend/mercury-console.html`** (the *vanilla* back-office app)
+  has **not** been retrofitted — it still runs on `localStorage`. It is
+  superseded by `frontend-react/console/`, which is fully API-driven;
+  the vanilla file is kept only as the reference the React port was
+  built from.
+- **React scanner**: TP3–TP7, both WSW steps, and the 4 non-linear
+  flows are not yet built in `frontend-react/scanner/` — each shows an
+  explicit "not yet built" panel rather than silently doing nothing.
+  Every one has a working implementation in `mercury-scanner.html` and
+  an endpoint already waiting in `shared/api.js`. See
   `frontend-react/README.md`'s porting checklist.
 
 ## Directory structure
@@ -129,12 +139,19 @@ tfs-logistics/
     mercury-console.html         NOT retrofitted — still localStorage-only
     api-client.js                complete client library
     reference-integration.html   minimal proof of the API contract
-  frontend-react/
-    index.html                   ESM/import-map shell, no build step
-    app.js                       top-level component, session + routing
-    components.js                Login, Picker, TP1Panel, TP2Panel
-    api.js                       ESM API client
-    src/__verify__/               9 tests via real react-dom/server
+  frontend-react/                TWO separate React apps, one backend
+    index.html                   signpost page linking to both
+    serve.js                     static dev server (ESM needs http://)
+    shared/                      the only code crossing between the apps
+      api.js                     the whole backend contract, one copy
+      format.js                  date / status / CSV helpers
+      tokens.css                 palette + chip/alert/toast primitives
+      Toast.js                   the one identical UI component
+    scanner/                     APP 1 — operators, phone / handheld
+      index.html app.js scanner.css components/
+    console/                     APP 2 — managers, desktop
+      index.html app.js console.css components/
+    src/__verify__/              50 tests: rendering, logic, separation
     README.md
   e2e/
     scanner-full-loop.spec.js    full retrofitted-UI proof — every touch point

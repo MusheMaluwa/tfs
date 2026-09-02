@@ -1,0 +1,83 @@
+/* shared/tokens.css
+ *
+ * The design tokens and the handful of primitives that are byte-for-byte
+ * identical in both apps. Deliberately NOT here: .panel / .btn / input
+ * sizing. The scanner is a one-handed phone app and needs bigger tap
+ * targets than the desktop console, so each app sizes those itself in
+ * its own stylesheet. Sharing the palette is what keeps them looking
+ * like one product; sharing the sizing would make both worse.
+ */
+
+:root{
+  --bg:#F4F7FB; --panel:#FFFFFF; --panel-2:#EEF3FA; --panel-3:#E1EAF6;
+  --line:rgba(10,40,80,0.08); --line-strong:rgba(10,40,80,0.18);
+  --amber:#0B63CE; --amber-dim:rgba(11,99,206,0.15);
+  --cyan:#2AA8E0; --cyan-dim:rgba(42,168,224,0.15);
+  --green:#1E9E63; --green-dim:rgba(30,158,99,0.15);
+  --red:#D93025; --red-dim:rgba(217,48,37,0.15);
+  --violet:#6C5CE7; --violet-dim:rgba(108,92,231,0.15);
+  --text:#101A2B; --text-dim:#5B6B82; --text-dimmer:#93A0B2;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  background:var(--bg); color:var(--text); font-family:var(--font-body);
+  min-height:100vh; -webkit-font-smoothing:antialiased;
+}
+
+/* Brand mark — same lockup in both headers */
+.brand{ display:flex; align-items:center; gap:10px; }
+.brand .mark{
+  width:auto; min-width:42px; height:32px; padding:0 8px; border-radius:6px;
+  background:linear-gradient(135deg,var(--amber),var(--cyan));
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; color:#FFFFFF;
+  font-size:12px; letter-spacing:0.5px;
+}
+.brand h1{ font-family:var(--font-display); font-size:19px; margin:0; letter-spacing:0.3px; }
+.brand .sub{
+  font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim);
+  letter-spacing:1.3px; text-transform:uppercase; margin-top:1px;
+}
+
+/* Status chips — one vocabulary of colours across both apps */
+.chip{
+  display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono);
+  font-size:10.5px; letter-spacing:0.6px; text-transform:uppercase;
+  padding:5px 10px; border-radius:20px; border:1px solid transparent; white-space:nowrap;
+}
+.chip .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+.chip.c-idle{ background:rgba(10,37,64,0.05); color:var(--text-dim); border-color:var(--line-strong); }
+.chip.c-active{ background:var(--amber-dim); color:var(--amber); border-color:rgba(11,99,206,0.4); }
+.chip.c-transit{ background:var(--cyan-dim); color:var(--cyan); border-color:rgba(42,168,224,0.4); }
+.chip.c-hub{ background:var(--violet-dim); color:var(--violet); border-color:rgba(108,92,231,0.4); }
+.chip.c-return{ background:var(--green-dim); color:var(--green); border-color:rgba(30,158,99,0.4); }
+.chip.c-outstanding{ background:var(--red-dim); color:var(--red); border-color:rgba(217,48,37,0.4); }
+.chip.c-damaged{ background:var(--red-dim); color:var(--red); border-color:rgba(217,48,37,0.4); }
+.chip.c-branch{ background:var(--violet-dim); color:var(--violet); border-color:rgba(108,92,231,0.4); }
+
+/* Inline alerts */
+.alert{ font-family:var(--font-mono); font-size:12px; padding:10px 12px; border-radius:8px; margin-top:10px; }
+.alert.warn{ background:var(--red-dim); color:var(--red); border:1px solid rgba(217,48,37,0.35); }
+.alert.info{ background:var(--cyan-dim); color:var(--cyan); border:1px solid rgba(42,168,224,0.35); }
+.alert.ok{ background:var(--green-dim); color:var(--green); border:1px solid rgba(30,158,99,0.35); }
+
+/* Toast — rendered by shared/Toast.js in both apps */
+.toast{
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  background:var(--panel-2); border:1px solid var(--green); color:var(--green);
+  font-family:var(--font-mono); font-size:12px; padding:10px 18px; border-radius:8px;
+  z-index:999; box-shadow:0 10px 26px rgba(10,40,80,0.22);
+  opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
+  max-width:90%; text-align:center;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+.toast.err{ border-color:var(--red); color:var(--red); }
+
+.empty-note{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dimmer); padding:8px 0; }
+footer{ text-align:center; margin-top:28px; font-family:var(--font-mono); font-size:9.5px; letter-spacing:1px; color:var(--text-dimmer); }
+.hidden{ display:none !important; }

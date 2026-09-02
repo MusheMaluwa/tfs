@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "verify": "node --test src/__verify__/*.test.js"
+    "verify": "node --test \"src/__verify__/*.test.js\"",
+    "verify:scanner": "node --test src/__verify__/scanner.test.js",
+    "verify:console": "node --test src/__verify__/console.test.js",
+    "verify:separation": "node --test src/__verify__/separation.test.js",
+    "serve": "node serve.js"
   }
 }

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TFS Logistics — Console</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
+<!-- Shared palette first, then this app's own sizing. -->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="./console.css">
+
+<!--
+  React 19 removed its UMD/CDN-global builds (react.dev's 2024 upgrade
+  guide), so ES modules via an import map is the current no-build-step
+  way to run React in a browser. This app declares its own import map,
+  independent of the scanner's — they happen to pin the same version.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.2.5",
+    "react-dom/client": "https://esm.sh/react-dom@19.2.5/client"
+  }
+}
+</script>
+</head>
+<body>
+  <div class="wrap" id="root"></div>
+
+  <!--
+    Leaflet and ZXing both ship UMD, not ES modules, so they load as
+    classic scripts and expose window.L / window.ZXing. SiteMap.js and
+    BarcodeScanner.js each check for their global and degrade to a
+    readable message rather than a blank box if it never arrives.
+    Only the console loads these — the scanner app never pays for them.
+  -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+
+  <script>
+    // Point at a deployed API by setting this before app.js loads.
+    // Defaults to the local dev backend (backend/README.md: npm run dev).
+    window.TFS_API_BASE_URL = window.TFS_API_BASE_URL || 'http://localhost:4000';
+  </script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
