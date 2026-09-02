@@ -18,7 +18,7 @@ jobs:
     # not only the embedded engine the default suite uses.
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: tfs
           POSTGRES_PASSWORD: tfs
@@ -73,7 +73,7 @@ jobs:
     needs: [backend, frontend]
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: tfs
           POSTGRES_PASSWORD: tfs

@@ -15,11 +15,25 @@ driver-facing code path:
 | unset | [PGlite](https://pglite.dev) — PostgreSQL compiled to WebAssembly, in-process, storing to `backend/.pgdata` | `npm test`, and a first local run |
 
 PGlite is not an emulation or a compatibility layer: it is the actual
-PostgreSQL engine (18.3), so a query that works in the test suite works
+PostgreSQL engine, so a query that works in the test suite works
 against a real server. It exists here so that cloning this repository
 and running `npm test` needs no container, no service and no
 `initdb` — the same zero-setup start the SQLite file used to give,
 without the dialect drift that came with it.
+
+**Everything is PostgreSQL 18.** Not incidentally — a version skew
+between what CI runs and what production runs is how a query passes
+review and fails on deploy:
+
+| Where | Version |
+|---|---|
+| Neon (production) | 18.x |
+| PGlite (`npm test`) | 18.x |
+| `docker-compose.yml` | `postgres:18-alpine` |
+| CI service containers | `postgres:18-alpine` |
+
+Check what a server is actually running with `SELECT version()`, or
+`GET /api/health`, which names the engine that answered.
 
 `schema.sql` is applied on every boot. Every statement is
 `IF NOT EXISTS` / `ON CONFLICT DO NOTHING`, so it is safe to re-run and
