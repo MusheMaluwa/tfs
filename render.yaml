@@ -1,16 +1,16 @@
 # Render Blueprint — see DEPLOYMENT.md for the full guide.
 #
-# This deploys the backend (Node web service) and the scanner frontend
-# (static site) together. Not fully hands-off: after the first deploy
-# you still need to paste the backend's live URL into the frontend
-# (DEPLOYMENT.md step 5) — Render assigns that URL only once the
-# backend service exists, so it can't be known ahead of time in this
-# file.
-#
-# Only mercury-scanner.html is wired to the backend — mercury-console.html
-# is not deployed here because it isn't retrofitted yet (still
-# localStorage-only; see the main README's "What's not done"). Deploying
-# it would just show a disconnected, static demo.
+# Deploys the backend (Node web service), a managed PostgreSQL, and the
+# React frontends (static site). Not fully hands-off: after the first
+# deploy you still need to paste the backend's live URL into the
+# frontend (DEPLOYMENT.md step 5) — Render assigns that URL only once
+# the backend service exists, so it can't be known ahead of time here.
+
+databases:
+  - name: tfs-logistics-db
+    databaseName: tfs_logistics
+    user: tfs
+    plan: free
 
 services:
   - type: web
@@ -18,17 +18,26 @@ services:
     runtime: node
     rootDir: backend
     plan: free
-    buildCommand: "npm install"
+    buildCommand: "npm ci --omit=dev"
+    # seed is safe to re-run: sites and assets insert ON CONFLICT DO
+    # NOTHING, so a redeploy tops up the demo data rather than
+    # duplicating or wiping it. Drop it once real data is in.
     startCommand: "npm run seed && npm start"
+    healthCheckPath: /api/health
     envVars:
       - key: AUTH_SECRET
         generateValue: true
-      - key: DB_PATH
-        value: /tmp/tfs_logistics.db
+      # The managed database above. With this set the API uses
+      # node-postgres; without it, it would look for the embedded engine
+      # that `--omit=dev` deliberately leaves out of the build.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tfs-logistics-db
+          property: connectionString
 
   - type: web
     name: tfs-logistics-scanner
     runtime: static
-    rootDir: frontend
+    rootDir: frontend-react
     staticPublishPath: .
     buildCommand: "echo 'no build needed — static files'"

@@ -37,7 +37,15 @@ this link outside your team.
 
 ## Step 1 — Deploy the backend
 
-1. In the Render dashboard: **New +** → **Web Service**.
+**First, create the database.** The API needs a PostgreSQL to point at.
+
+1. In the Render dashboard: **New +** → **PostgreSQL**.
+2. Name it `tfs-logistics-db`, database `tfs_logistics`, user `tfs`,
+   instance type **Free**. Create it and wait for it to go green.
+
+**Then the web service.**
+
+1. **New +** → **Web Service**.
 2. Connect the GitHub repo you just pushed.
 3. Fill in:
    | Field | Value |
@@ -45,25 +53,35 @@ this link outside your team.
    | Name | `tfs-logistics-backend` (or anything) |
    | Root Directory | `backend` |
    | Runtime | `Node` |
-   | Build Command | `npm install` |
+   | Build Command | `npm ci --omit=dev` |
    | Start Command | `npm run seed && npm start` |
    | Instance Type | **Free** |
 4. Under **Environment Variables**, add:
    - `AUTH_SECRET` → click "Generate" for a random value (do **not**
      leave this unset — the code falls back to an insecure default
      that's fine for local dev, not for anything with a public URL).
-   - `DB_PATH` → `/tmp/tfs_logistics.db`
-5. Click **Create Web Service**. First deploy takes a few minutes.
-6. Once live, copy its URL — looks like
+   - `DATABASE_URL` → **Add from database** → pick `tfs-logistics-db`
+     → *Internal Connection String*. Without this the API has no
+     database: `--omit=dev` deliberately leaves out the embedded engine
+     that local development falls back to, and startup will fail with a
+     message telling you exactly this.
+5. Set **Health Check Path** to `/api/health`. It reports which
+   database engine answered, so a green check means the API really
+   reached PostgreSQL rather than merely booting.
+6. Click **Create Web Service**. First deploy takes a few minutes.
+7. Once live, copy its URL — looks like
    `https://tfs-logistics-backend-xxxx.onrender.com`. You need this
    for Step 3.
 
-**Why "seed" runs on every start, not just once:** Render's free tier
-doesn't persist disk between restarts anyway, so every restart is a
-blank database regardless. Re-seeding on boot turns that into a
-feature for a demo — stakeholders always see the same clean starting
-state, and nobody can accidentally leave it corrupted for the next
-person who clicks the link.
+`render.yaml` in the repository root does all of the above as a
+Blueprint if you would rather not click through it.
+
+**Why "seed" runs on every start, not just once:** it is safe to
+re-run — sites and assets insert `ON CONFLICT DO NOTHING`, so a
+redeploy tops the demo data up rather than duplicating or wiping it.
+Unlike the previous SQLite setup, the managed database **does** persist
+across restarts, so real scans survive a redeploy. Drop `npm run seed &&`
+from the start command once there is real data you care about.
 
 ## Step 2 — Point the frontend at the backend
 

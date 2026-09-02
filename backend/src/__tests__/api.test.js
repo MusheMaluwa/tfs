@@ -1,5 +1,10 @@
 // src/__tests__/api.test.js
-process.env.DB_PATH = ':memory:';
+//
+// Runs against a real PostgreSQL — the embedded one, so no server or
+// container is needed. Point DATABASE_URL at a throwaway database to run
+// the same suite against a real PostgreSQL server instead; the code path
+// under test is identical either way.
+process.env.PGLITE_PATH = ':memory:';
 process.env.AUTH_SECRET = 'test-secret';
 
 const test = require('node:test');
@@ -7,14 +12,21 @@ const assert = require('node:assert/strict');
 const db = require('../db');
 const app = require('../server');
 
-db.run(`INSERT INTO sites (code, name, type) VALUES ('JHB-DC1','JHB-DC1','DC')`);
-db.run(`INSERT INTO sites (code, name, type) VALUES ('Alberton (ALB)','Alberton','Hub')`);
-db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100001','Rolltainer','JHB-DC1','Available at DC',0,datetime('now'))`);
-db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100002','Rolltainer','JHB-DC1','Available at DC',0,datetime('now'))`);
-
 let server, base, dcToken;
 
 test.before(async () => {
+  // Connecting and applying the schema is asynchronous now, so the
+  // fixtures cannot be inserted at module load the way they were with
+  // the synchronous SQLite driver.
+  await db.ready();
+  // A fresh embedded database is already empty; a real server pointed at
+  // by DATABASE_URL is not. Start from a known state either way.
+  await db.run(`TRUNCATE custody_log, exceptions, manifest_assets, manifests, assets, sites RESTART IDENTITY CASCADE`);
+  await db.run(`INSERT INTO sites (code, name, type) VALUES ('JHB-DC1','JHB-DC1','DC')`);
+  await db.run(`INSERT INTO sites (code, name, type) VALUES ('Alberton (ALB)','Alberton','Hub')`);
+  await db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100001','Rolltainer','JHB-DC1','Available at DC',0,now())`);
+  await db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100002','Rolltainer','JHB-DC1','Available at DC',0,now())`);
+
   await new Promise((resolve) => { server = app.listen(0, resolve); });
   base = `http://localhost:${server.address().port}`;
 
@@ -25,12 +37,22 @@ test.before(async () => {
   const login = await loginRes.json();
   dcToken = login.token;
 });
-test.after(() => server.close());
+test.after(async () => {
+  // `server` is undefined if the before hook threw, and an after hook
+  // that itself throws hides the real failure.
+  if (server) server.close();
+  await db.close();
+});
 
-test('health check responds without auth', async () => {
+test('health check responds without auth, and names the engine that answered', async () => {
   const res = await fetch(`${base}/api/health`);
   assert.equal(res.status, 200);
-  assert.deepEqual(await res.json(), { ok: true, service: 'tfs-logistics-backend' });
+  const body = await res.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.service, 'tfs-logistics-backend');
+  // Proof the health check actually reached Postgres rather than just
+  // reporting that the process is alive.
+  assert.ok(['pg', 'pglite'].includes(body.database), `unexpected engine: ${body.database}`);
 });
 
 test('GET /api/sites is public (needed for the login screen site picker, before a token exists)', async () => {
@@ -100,7 +122,7 @@ test('TP1 open -> TP2 close over real HTTP requests produces the same result as 
 });
 
 test('an idempotency key prevents a retried request from double-processing', async () => {
-  db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100099','Rolltainer','JHB-DC1','Available at DC',0,datetime('now'))`);
+  await db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100099','Rolltainer','JHB-DC1','Available at DC',0,now())`);
   const idemKey = 'test-idem-key-1';
   const doRequest = () => fetch(`${base}/api/touchpoints/tp1-open`, {
     method: 'POST',

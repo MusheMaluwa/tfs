@@ -14,15 +14,19 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 async function main() {
-  process.env.DB_PATH = ':memory:';
+  // A throwaway PostgreSQL in-process, so this needs no server. Set
+  // DATABASE_URL to run the same script against a real one.
+  process.env.PGLITE_PATH = process.env.PGLITE_PATH || ':memory:';
   process.env.PORT = '0';
   const app = require(path.join(__dirname, '..', 'backend', 'src', 'server.js'));
   const db = require(path.join(__dirname, '..', 'backend', 'src', 'db.js'));
 
-  db.run(`INSERT INTO sites (code, name, type) VALUES ('JHB-DC1','JHB-DC1','DC')`);
-  db.run(`INSERT INTO sites (code, name, type) VALUES ('Alberton (ALB)','Alberton','Hub')`);
-  db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100001','Rolltainer','JHB-DC1','Available at DC',0,datetime('now'))`);
-  db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100002','Rolltainer','JHB-DC1','Available at DC',0,datetime('now'))`);
+  await db.ready();
+  await db.run(`TRUNCATE custody_log, exceptions, manifest_assets, manifests, assets, sites RESTART IDENTITY CASCADE`);
+  await db.run(`INSERT INTO sites (code, name, type) VALUES ('JHB-DC1','JHB-DC1','DC')`);
+  await db.run(`INSERT INTO sites (code, name, type) VALUES ('Alberton (ALB)','Alberton','Hub')`);
+  await db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100001','Rolltainer','JHB-DC1','Available at DC',0,now())`);
+  await db.run(`INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES ('RT-100002','Rolltainer','JHB-DC1','Available at DC',0,now())`);
 
   const server = await new Promise((resolve) => {
     const s = app.listen(0, () => resolve(s));

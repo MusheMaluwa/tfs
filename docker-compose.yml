@@ -1,9 +1,14 @@
-# Local development stack: API + PostgreSQL + Redis, matching the
-# recommended production stack. NOT verified runnable in the environment
-# this was produced in (no Docker daemon available) — run
-# `docker compose up` yourself as the first real test of this file.
-
-version: "3.9"
+# Local development stack: API + PostgreSQL + Redis.
+#
+# The API reads DATABASE_URL and talks to the `postgres` service through
+# node-postgres. Without that variable it falls back to an embedded
+# PostgreSQL inside the container (backend/README.md), which is how
+# `npm run dev` works with nothing running — so this file is for when
+# you want the real topology, not a prerequisite for developing.
+#
+# Redis is declared here for the cache swap described in
+# backend/README.md; src/lib/cache.js is still the in-process Map, so
+# REDIS_URL is not read yet.
 services:
   api:
     build: ./backend
@@ -15,8 +20,12 @@ services:
       REDIS_URL: redis://redis:6379
       AUTH_SECRET: local-dev-secret-do-not-use-in-production
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        # Not just "started": the API applies schema.sql before it
+        # listens and exits non-zero if the database is unreachable, so
+        # starting it against a Postgres that is still initialising
+        # would crash the container on every `up`.
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
@@ -28,6 +37,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tfs -d tfs_logistics"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
 
   redis:
     image: redis:7-alpine

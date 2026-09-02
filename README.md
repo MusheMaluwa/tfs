@@ -48,10 +48,13 @@ described.
 - **`backend/`** — every touch point (TP1–TP7, including Returns
   Facility Routing), both WSW steps, all 5 non-linear flows. Real
   auth with role enforcement, idempotency keys, a caching layer with
-  invalidation. **20 passing tests**, including real HTTP round-trips
-  against a running server. See `backend/README.md` for the one
-  deliberate architectural compromise (zero npm dependencies) and its
-  swap-in path to Express/PostgreSQL/Redis.
+  invalidation. Runs on **PostgreSQL** — `node-postgres` against
+  `DATABASE_URL`, or an embedded PostgreSQL (PGlite) when that is
+  unset, so tests and a first local run need no server. **23 passing
+  tests**, including real HTTP round-trips against a running server,
+  and the same suite runs against either engine. See
+  `backend/README.md` for the remaining swap-in path to
+  Express/Redis/jsonwebtoken.
 - **`frontend/mercury-scanner.html`** — the original vanilla-JS
   operator app, **fully retrofitted**: all 17 scan actions (7 touch
   points, 2 WSW steps, 4 non-linear flows in/out) now call the real
@@ -67,14 +70,16 @@ described.
 - **`frontend-react/`** — a real React 19 rewrite as **two separate
   apps over the one backend**: `scanner/` (operators, phone) and
   `console/` (managers, desktop). They are genuinely independent React
-  roots with no shared UI — the only thing crossing between them is
-  `shared/api.js`, the single copy of the backend contract. **50
+  roots with almost no shared UI — what crosses between them is
+  `shared/api.js`, the single copy of the backend contract, plus a
+  toast and the camera-capture component. **59
   passing tests**: component rendering through the real
   `react-dom/server`, the pure logic (rollups, filtering, cycle time,
-  CSV escaping), and 10 architecture tests that fail if the two apps
-  ever start importing each other. The console is complete and fully
-  API-driven; the scanner has TP1/TP2 with a documented path for the
-  rest. See `frontend-react/README.md` — in particular for why it's
+  CSV escaping), and 11 architecture tests that fail if the two apps
+  ever start importing each other. Both apps are complete: the console
+  is fully API-driven and — like the vanilla console — needs no
+  sign-in; the scanner performs all 17 actions, matching
+  `mercury-scanner.html`. See `frontend-react/README.md` — in particular for why it's
   plain `React.createElement` rather than JSX (no bundler available in
   this environment) and exactly what is/isn't verifiable without live
   internet access.
@@ -107,12 +112,6 @@ available in the environment this was built in:
   superseded by `frontend-react/console/`, which is fully API-driven;
   the vanilla file is kept only as the reference the React port was
   built from.
-- **React scanner**: TP3–TP7, both WSW steps, and the 4 non-linear
-  flows are not yet built in `frontend-react/scanner/` — each shows an
-  explicit "not yet built" panel rather than silently doing nothing.
-  Every one has a working implementation in `mercury-scanner.html` and
-  an endpoint already waiting in `shared/api.js`. See
-  `frontend-react/README.md`'s porting checklist.
 
 ## Directory structure
 
@@ -120,7 +119,7 @@ available in the environment this was built in:
 tfs-logistics/
   backend/                      complete, tested, running application
     src/
-      db.js                     node:sqlite wrapper
+      db.js                     PostgreSQL adapter (pg | embedded)
       server.js                  entry point
       seed.js                    demo data loader
       lib/
@@ -146,12 +145,13 @@ tfs-logistics/
       api.js                     the whole backend contract, one copy
       format.js                  date / status / CSV helpers
       tokens.css                 palette + chip/alert/toast primitives
-      Toast.js                   the one identical UI component
+      Toast.js                   an identical UI component
+      BarcodeScanner.js          the other one — camera capture (ZXing)
     scanner/                     APP 1 — operators, phone / handheld
-      index.html app.js scanner.css components/
+      index.html app.js scanner.css components/   all 17 actions live
     console/                     APP 2 — managers, desktop
       index.html app.js console.css components/
-    src/__verify__/              50 tests: rendering, logic, separation
+    src/__verify__/              59 tests: rendering, logic, separation
     README.md
   e2e/
     scanner-full-loop.spec.js    full retrofitted-UI proof — every touch point
