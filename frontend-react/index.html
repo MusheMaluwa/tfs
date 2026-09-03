@@ -61,8 +61,10 @@
     </div>
 
     <div class="note">
-      Separate React apps sharing only <code>shared/api.js</code> and the palette.<br>
-      Both need the API running — <code>cd backend &amp;&amp; npm run dev</code>.
+      Separate React apps sharing only <code>shared/api.js</code>, <code>shared/api-config.js</code>
+      and the palette.<br>
+      Served locally they call <code>localhost:4000</code> — <code>cd backend &amp;&amp; npm run dev</code>.<br>
+      Deployed they call the live API automatically; no edit in between.
     </div>
   </div>
 </body>

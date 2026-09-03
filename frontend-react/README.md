@@ -98,8 +98,18 @@ Then open **http://localhost:5173/scanner/** or
 production these are plain static files; hand the folder to any static
 host.
 
-To point at a deployed API, set `window.TFS_API_BASE_URL` before
-`app.js` loads (there is a line for it in each `index.html`).
+Which API each app calls is not configured by hand:
+`shared/api-config.js` loads before `app.js` and resolves it from the
+page's own origin — `http://localhost:4000` when you are serving
+locally (or `http://<your-lan-ip>:4000` when a phone on the same wifi
+loads it), and the deployed backend when the page is served from a
+real host. So the same commit runs in both places.
+
+Override it for one session with `?api=<url>` on the page URL
+(`?api=reset` undoes it), or from the browser console with
+`TFS_API_CONFIG.set(url)` / `TFS_API_CONFIG.reset()`. Tests that set
+`window.TFS_API_BASE_URL` before load still win over everything —
+that is how the Playwright specs pin the API to their own port.
 
 ## No JSX, no build step
 

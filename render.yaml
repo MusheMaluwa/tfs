@@ -1,10 +1,10 @@
 # Render Blueprint — see DEPLOYMENT.md for the full guide.
 #
 # Deploys the backend (Node web service) and the React frontends
-# (static site). Not fully hands-off, in two places: after the first
-# deploy you still need to paste the backend's live URL into the
-# frontend (DEPLOYMENT.md step 5), and MONGODB_URI has to be set by
-# hand.
+# (static site). One thing is not hands-off: MONGODB_URI has to be set
+# by hand (see below). The frontend needs no post-deploy edit — it
+# resolves its API URL from its own origin at load time, in
+# frontend-react/shared/api-config.js.
 #
 # There is no `databases:` block any more. Render's managed database
 # offering is PostgreSQL; MongoDB Atlas is a separate service with its

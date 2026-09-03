@@ -103,23 +103,33 @@ care about.
 
 ## Step 2 — Point the frontend at the backend
 
-Open `frontend/mercury-scanner.html` and find this line near the top
-of the `<script>` block:
+Nothing to edit per deploy. Every page loads `api-config.js`
+(`frontend-react/shared/api-config.js`, and a copy in `frontend/`)
+before its app code, and that script picks the backend from the origin
+the page was served from:
+
+| Page served from | API it calls |
+|---|---|
+| `localhost` / `127.0.0.1` / `file://` | `http://localhost:4000` |
+| a LAN address like `192.168.1.x` | `http://192.168.1.x:4000` — a phone testing against your dev machine |
+| anything else (a real deployment) | the live backend below |
+
+The live backend is the one constant in the whole scheme, and it is
+declared once, at the top of `api-config.js`:
 
 ```js
-const API_BASE_URL = window.TFS_API_BASE_URL || 'http://localhost:4000';
+var PROD_API_BASE_URL = 'https://tfs-dfj3.onrender.com';
 ```
 
-Add one line directly above the opening `<script>` tag, with the real
-URL from Step 1:
+Change hosts by editing that one line (in both copies). Nothing else
+in the frontend knows a URL.
 
-```html
-<script>window.TFS_API_BASE_URL = 'https://tfs-logistics-backend-xxxx.onrender.com';</script>
-<script>
-const API_BASE_URL = window.TFS_API_BASE_URL || 'http://localhost:4000';
-```
-
-Commit and push this change.
+**Testing against a different API without a commit:** append
+`?api=https://some-other-host` to the page URL. It is remembered in
+`localStorage` for that browser, so subsequent visits keep using it;
+`?api=reset` clears it and returns to auto-detection. From the console,
+`TFS_API_CONFIG.set(url)` and `TFS_API_CONFIG.reset()` do the same, and
+`TFS_API_CONFIG.source` tells you which rule above was applied.
 
 ## Step 3 — Deploy the frontend
 

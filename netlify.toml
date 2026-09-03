@@ -24,16 +24,18 @@
 #
 # THE API IT TALKS TO
 #
-# Both apps default to `http://localhost:4000` (set in each index.html)
-# and there is no localStorage fallback — every screen is API-driven. A
-# deployed frontend therefore needs a deployed backend: a public page
-# cannot reach a reviewer's own machine, and Chrome's local-network
-# access controls block a public origin from calling localhost even for
-# the person running it. `render.yaml` in this directory provisions the
-# backend (its database is a MongoDB Atlas cluster you create
-# separately — see DEPLOYMENT.md); point the apps at its URL once it is
-# live. Until then, run both halves locally — `npm run serve` here and
-# `npm run dev` in backend/.
+# Every screen is API-driven — there is no localStorage fallback — so a
+# deployed frontend needs a deployed backend: a public page cannot reach
+# a reviewer's own machine, and Chrome's local-network access controls
+# block a public origin from calling localhost even for the person
+# running it.
+#
+# That backend is live at https://tfs-dfj3.onrender.com (Render + MongoDB
+# Atlas, provisioned by render.yaml). Nothing here has to be edited to
+# use it: shared/api-config.js loads before either app and picks the URL
+# from the origin the page was served from — localhost:4000 while you
+# develop, the Render API once deployed. One commit, both environments.
+# Append ?api=<url> to a page to aim it somewhere else for a session.
 
 [build]
   publish = "frontend-react"

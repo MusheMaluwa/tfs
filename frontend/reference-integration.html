@@ -48,6 +48,9 @@
     <pre id="dashResult">—</pre>
   </div>
 
+  <!-- Resolves the API URL from the origin: local when served locally,
+       the deployed backend otherwise. Must load before api-client.js. -->
+  <script src="api-config.js"></script>
   <script src="api-client.js"></script>
   <script>
     let lastManifestId = null;

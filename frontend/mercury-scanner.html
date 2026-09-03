@@ -133,6 +133,7 @@
 </div>
 
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="api-config.js"></script>
 <script>
 /* =====================================================================
    TFS LOGISTICS — handheld / phone app.
@@ -186,6 +187,10 @@ function uidManifest(prefix){ return prefix + '-' + String(Math.floor(100000+Mat
    backend now. See TECHNICAL-SPEC.md §7 for the original mapping this
    retrofit implements.
    ========================================================= */
+// api-config.js (loaded above) has already picked this: the local dev
+// backend when this page is opened locally, the deployed API when it is
+// served from a real host. The fallback only matters if that script is
+// missing — the single-file build, opened straight from disk.
 const API_BASE_URL = window.TFS_API_BASE_URL || 'http://localhost:4000';
 let apiToken = sessionStorage.getItem('tfs_token') || null;
 

@@ -40,11 +40,13 @@
 <body>
   <div class="wrap" id="root"></div>
 
-  <script>
-    // Point at a deployed API by setting this before app.js loads.
-    // Defaults to the local dev backend (backend/README.md: npm run dev).
-    window.TFS_API_BASE_URL = window.TFS_API_BASE_URL || 'http://localhost:4000';
-  </script>
+  <!--
+    Which backend to call is decided at load time by shared/api-config.js
+    (local origin -> localhost:4000, deployed origin -> the Render API),
+    so this page is identical in development and in production. Override
+    for one session with ?api=<url>, undo with ?api=reset.
+  -->
+  <script src="../shared/api-config.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
