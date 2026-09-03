@@ -4,7 +4,7 @@
 // real react-dom/server, and unit-tests the pure logic (filtering,
 // rollups, cycle time, CSV shape) directly.
 //
-// The API rows used here are shaped exactly like backend/schema.sql
+// The API rows used here are shaped exactly like backend/src/schema.js
 // returns them — snake_case columns, ISO timestamp strings — which is
 // the part most likely to drift if someone changes the backend.
 

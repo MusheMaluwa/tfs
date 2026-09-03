@@ -4,13 +4,18 @@
 // dotenv dependency:
 //
 //   PORT           defaults to 4000
-//   DATABASE_URL   postgres://user:pass@host:5432/db — when set, the API
-//                  talks to that server. When unset it runs the embedded
-//                  Postgres in backend/.pgdata instead (see src/db.js),
-//                  which is what makes `npm run dev` work with nothing
-//                  installed.
-//   PGLITE_PATH    where that embedded database lives; ':memory:' for a
-//                  throwaway one.
+//   MONGODB_URI    mongodb+srv://user:pass@cluster.mongodb.net/ — when
+//                  set, the API talks to that deployment. When unset it
+//                  starts a throwaway in-process MongoDB instead (see
+//                  src/db.js), which is what makes `npm run dev` work
+//                  with nothing installed.
+//   MONGODB_DB     database name inside that deployment; defaults to
+//                  tfs_logistics.
+//   MONGODB_TIMEOUT_MS
+//                  how long to wait for a server before giving up;
+//                  defaults to 10000. A wrong password or an IP that is
+//                  not on the Atlas access list should surface as a
+//                  startup error in seconds, not a hang.
 //   AUTH_SECRET    token signing key.
 //
 // For local dev, export them in your shell or use `env VAR=val npm run dev`.
@@ -24,13 +29,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health reports which engine answered, because "it's up" and "it's
-// talking to the database you think it is" are different questions —
-// and with two ways to reach Postgres, the second one is worth asking.
+// Health reports which deployment answered, because "it's up" and
+// "it's talking to the database you think it is" are different
+// questions — and with two ways to reach MongoDB, the second one is
+// worth asking.
 app.get('/api/health', async (req, res) => {
   try {
-    await db.get('SELECT 1');
-    res.json({ ok: true, service: 'tfs-logistics-backend', database: db.kind() });
+    await db.ping();
+    res.json({ ok: true, service: 'tfs-logistics-backend', database: db.kind(), databaseName: db.name() });
   } catch (err) {
     res.status(503).json({ ok: false, service: 'tfs-logistics-backend', error: 'database unreachable' });
   }

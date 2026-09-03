@@ -1,14 +1,18 @@
-# Local development stack: API + PostgreSQL + Redis.
+# Local development stack: API + MongoDB + Redis.
 #
-# The API reads DATABASE_URL and talks to the `postgres` service through
-# node-postgres. Without that variable it falls back to an embedded
-# PostgreSQL inside the container (backend/README.md), which is how
-# `npm run dev` works with nothing running — so this file is for when
-# you want the real topology, not a prerequisite for developing.
+# The API reads MONGODB_URI and talks to the `mongo` service through the
+# official driver. Without that variable it falls back to a throwaway
+# in-process mongod (backend/README.md), which is how `npm run dev`
+# works with nothing running — so this file is for when you want the
+# real topology, not a prerequisite for developing.
 #
 # Redis is declared here for the cache swap described in
 # backend/README.md; src/lib/cache.js is still the in-process Map, so
 # REDIS_URL is not read yet.
+#
+# Authored and reviewed for correctness but not brought up here (no
+# Docker daemon in the environment this was produced in) — verify with
+# `docker compose up` before relying on it.
 services:
   api:
     build: ./backend
@@ -16,32 +20,41 @@ services:
       - "4000:4000"
     environment:
       PORT: 4000
-      DATABASE_URL: postgres://tfs:tfs@postgres:5432/tfs_logistics
+      # replicaSet=rs0 is not optional: multi-document transactions need
+      # a replica set, and every touch point in lib/stateMachine.js runs
+      # inside one. A standalone mongod would start fine and then fail
+      # on the first scan.
+      MONGODB_URI: mongodb://mongo:27017/?replicaSet=rs0&directConnection=false
+      MONGODB_DB: tfs_logistics
       REDIS_URL: redis://redis:6379
       AUTH_SECRET: local-dev-secret-do-not-use-in-production
     depends_on:
-      postgres:
-        # Not just "started": the API applies schema.sql before it
+      mongo:
+        # Not just "started": the API applies the schema before it
         # listens and exits non-zero if the database is unreachable, so
-        # starting it against a Postgres that is still initialising
-        # would crash the container on every `up`.
+        # starting it against a MongoDB whose replica set has not been
+        # initiated yet would crash the container on every `up`.
         condition: service_healthy
 
-  postgres:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_USER: tfs
-      POSTGRES_PASSWORD: tfs
-      POSTGRES_DB: tfs_logistics
+  mongo:
+    image: mongo:8
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongodata:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tfs -d tfs_logistics"]
-      interval: 3s
-      timeout: 5s
+      # Doubles as the replica-set initiator. `rs.status()` throws until
+      # the set exists, so the first probe initiates it and later probes
+      # simply confirm it. One node, but a real replica set — which is
+      # what makes transactions work.
+      test: >-
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) {
+        rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }" | grep -q 1
+      interval: 5s
+      timeout: 10s
       retries: 20
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
@@ -49,4 +62,4 @@ services:
       - "6379:6379"
 
 volumes:
-  pgdata:
+  mongodata:

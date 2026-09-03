@@ -1,175 +1,128 @@
 // src/db.js
 //
-// PostgreSQL. One dialect, two ways of reaching an engine:
+// MongoDB. One driver, two ways of reaching a server:
 //
-//   DATABASE_URL set   -> node-postgres (`pg`) Pool against a real
-//                         server. This is the production path, and what
-//                         docker-compose.yml wires up.
-//   DATABASE_URL unset -> PGlite: the actual PostgreSQL engine compiled
-//                         to WebAssembly, running in-process against a
-//                         directory (or memory). Not an emulation and
-//                         not a different dialect — it is Postgres, so
-//                         `npm test` and a first local run need no
-//                         server, no Docker, and no install step, the
-//                         way the old SQLite file did.
+//   MONGODB_URI set   -> the official `mongodb` driver against that
+//                        deployment. This is the production path, and
+//                        what backend/.env and docker-compose.yml wire
+//                        up (MongoDB Atlas: mongodb+srv://...).
+//   MONGODB_URI unset -> mongodb-memory-server starts a real mongod as
+//                        a single-node REPLICA SET in a temp directory
+//                        and this file connects to that. Not a mock and
+//                        not a different query language — it is mongod,
+//                        so `npm test` and a first local run need no
+//                        server and no Docker, the way the embedded
+//                        Postgres did before it.
 //
-// Everything above this file talks to get/all/run/transaction and never
-// to a driver, which is what made replacing SQLite a change to one file
-// plus an `await` on each call.
+// The replica set matters: multi-document transactions require one, and
+// the touch-point state machine leans on them heavily. A standalone
+// mongod would pass most of the suite and then fail on every TP.
 //
-// Two things did have to change outside it, and both are real:
+// Everything above this file talks to the collection wrappers below and
+// never to the driver directly. The wrappers exist for one reason: they
+// inject the session. A statement inside db.transaction() that went to
+// the raw driver without the session would commit on its own and
+// survive a rollback, so `tx.assets` and `db.assets` are different
+// objects and passing the executor explicitly — the `x` first argument
+// throughout lib/stateMachine.js — is what makes that mistake hard to
+// write by accident rather than merely discouraged.
 //
-//   1. Every call is async now. A network round-trip cannot be made to
-//      look synchronous, and pretending otherwise (worker threads and
-//      Atomics.wait) would be a far worse trade than an `await`.
-//   2. `transaction(fn)` hands `fn` an executor. A pool hands out a
-//      different connection per query, so BEGIN on one and INSERT on
-//      another would silently write outside the transaction. Statements
-//      inside a transaction MUST go through the passed-in `tx`.
+// Two deviations from the driver's own API, both deliberate:
+//
+//   1. `find()` resolves to an ARRAY, not a cursor. Every caller in
+//      this codebase wants the whole result; `.toArray()` on all of
+//      them was noise.
+//   2. Reads default to the `_id: 0` projection (see src/schema.js).
+//      Pass an explicit `projection` to get it back.
 
-const fs = require('node:fs');
-const path = require('node:path');
+const { MongoClient, ObjectId } = require('mongodb');
+const { COLLECTIONS, PROJECTION, applySchema } = require('./schema');
 
-const SCHEMA_PATH = path.join(__dirname, '..', 'schema.sql');
-const DATABASE_URL = process.env.DATABASE_URL || '';
-// Where the embedded engine keeps its data when there is no server.
-// ':memory:' (what the tests use) gets a fresh database per process.
-const PGLITE_PATH = process.env.PGLITE_PATH || path.join(__dirname, '..', '.pgdata');
+const MONGODB_URI = process.env.MONGODB_URI || '';
+const MONGODB_DB = process.env.MONGODB_DB || 'tfs_logistics';
 
-/** Rewrites the codebase's `?` placeholders into Postgres `$1, $2, …`.
- *
- *  Doing it here rather than in ~100 call sites keeps every route's SQL
- *  readable and diff-free. Quoted text is skipped, so a `?` inside a
- *  string literal or a quoted identifier stays a literal `?`. */
-function toPgPlaceholders(sql) {
-  let out = '';
-  let n = 0;
-  let quote = null; // "'" or '"' while inside one
-  for (let i = 0; i < sql.length; i += 1) {
-    const c = sql[i];
-    if (quote) {
-      out += c;
-      // '' and "" are escaped quotes inside a literal, not the end of it.
-      if (c === quote) {
-        if (sql[i + 1] === quote) { out += sql[i + 1]; i += 1; } else { quote = null; }
-      }
-      continue;
-    }
-    if (c === "'" || c === '"') { quote = c; out += c; continue; }
-    if (c === '?') { n += 1; out += '$' + n; continue; }
-    out += c;
-  }
-  return out;
-}
-
-/** The one shape the rest of the codebase sees, over either driver. */
-function makeExecutor(query) {
+/** Wraps one driver Collection so that every call carries the
+ *  transaction's session (when there is one) and the default
+ *  projection (when the caller did not ask for another). */
+function wrapCollection(collection, session) {
+  const opts = (options) => (session ? { ...options, session } : options);
+  const read = (options) => {
+    const withSession = opts(options);
+    return 'projection' in withSession ? withSession : { ...withSession, projection: PROJECTION };
+  };
   return {
-    async get(sql, params = []) {
-      const { rows } = await query(sql, params);
-      return rows[0];
-    },
-    async all(sql, params = []) {
-      const { rows } = await query(sql, params);
-      return rows;
-    },
-    async run(sql, params = []) {
-      const res = await query(sql, params);
-      // `changes` is kept as an alias so the SQLite-era check in
-      // routes/sites.js (`result.changes === 0` -> 404) reads the same.
-      return { rowCount: res.rowCount, changes: res.rowCount, rows: res.rows };
-    },
+    name: collection.collectionName,
+    /** Resolves to an array, not a cursor — see the file header. */
+    find: (filter = {}, options = {}) => collection.find(filter, read(options)).toArray(),
+    findOne: (filter = {}, options = {}) => collection.findOne(filter, read(options)),
+    countDocuments: (filter = {}, options = {}) => collection.countDocuments(filter, opts(options)),
+    insertOne: (doc, options = {}) => collection.insertOne(doc, opts(options)),
+    insertMany: (docs, options = {}) => collection.insertMany(docs, opts(options)),
+    updateOne: (filter, update, options = {}) => collection.updateOne(filter, update, opts(options)),
+    updateMany: (filter, update, options = {}) => collection.updateMany(filter, update, opts(options)),
+    deleteOne: (filter, options = {}) => collection.deleteOne(filter, opts(options)),
+    deleteMany: (filter, options = {}) => collection.deleteMany(filter, opts(options)),
+    aggregate: (pipeline, options = {}) => collection.aggregate(pipeline, opts(options)).toArray(),
+    /** Escape hatch to the driver's own Collection. Anything reached
+     *  through this inside a transaction must be passed the session by
+     *  hand — that is the whole reason the wrappers exist. */
+    raw: collection,
   };
 }
 
-let backend = null; // { kind, query, transaction, close }
+/** The one shape the rest of the codebase sees, bound either to no
+ *  session (the module-level `db`) or to a transaction's. */
+function makeExecutor(database, session) {
+  const x = { session: session || null };
+  for (const c of COLLECTIONS) x[c.key] = wrapCollection(database.collection(c.name), session);
+  return x;
+}
+
+let backend = null; // { kind, client, database, executor, memoryServer }
 let readyPromise = null;
 
-async function initPg() {
-  const { Pool } = require('pg');
-  const pool = new Pool({ connectionString: DATABASE_URL });
-  const query = async (sql, params) => pool.query(toPgPlaceholders(sql), params);
-
-  return {
-    kind: 'pg',
-    query,
-    // Multi-statement scripts (schema.sql) cannot go through the
-    // extended/prepared protocol. Passing no values makes node-postgres
-    // use the simple query protocol, which accepts them.
-    exec: (sql) => pool.query(sql),
-    async transaction(fn) {
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        const tx = makeExecutor((sql, params) => client.query(toPgPlaceholders(sql), params));
-        const result = await fn(tx);
-        await client.query('COMMIT');
-        return result;
-      } catch (err) {
-        try { await client.query('ROLLBACK'); } catch { /* connection already gone */ }
-        throw err;
-      } finally {
-        client.release();
-      }
-    },
-    close: () => pool.end(),
-  };
+async function initServer() {
+  const client = new MongoClient(MONGODB_URI, {
+    // Fail fast and loudly rather than hanging: a wrong Atlas password
+    // or an IP that is not on the access list should surface as a
+    // startup error in seconds, not a request that never answers.
+    serverSelectionTimeoutMS: Number(process.env.MONGODB_TIMEOUT_MS) || 10000,
+  });
+  await client.connect();
+  return { kind: 'mongodb', client, memoryServer: null };
 }
 
-async function initPglite() {
-  // PGlite is ESM-only; this file is CommonJS. The dynamic import is
-  // fine because initialisation is asynchronous either way.
-  //
-  // It is a devDependency on purpose: a production install (`npm ci
-  // --omit=dev`) ships only `pg`, because a real deployment points at a
-  // real server. Landing here in production therefore means DATABASE_URL
-  // was never set, and that is what the error should say — not
-  // ERR_MODULE_NOT_FOUND.
-  let PGlite;
+async function initMemory() {
+  // mongodb-memory-server is a devDependency on purpose: a production
+  // install (`npm ci --omit=dev`) ships only `mongodb`, because a real
+  // deployment points at a real server. Landing here in production
+  // therefore means MONGODB_URI was never set, and that is what the
+  // error should say — not ERR_MODULE_NOT_FOUND.
+  let MongoMemoryReplSet;
   try {
-    ({ PGlite } = await import('@electric-sql/pglite'));
-  } catch (err) {
+    ({ MongoMemoryReplSet } = require('mongodb-memory-server'));
+  } catch {
     throw new Error(
-      'DATABASE_URL is not set, and the embedded Postgres (@electric-sql/pglite) is not installed. '
-      + 'Set DATABASE_URL to point at your PostgreSQL server, or run `npm install` with dev dependencies '
+      'MONGODB_URI is not set, and the in-process MongoDB (mongodb-memory-server) is not installed. '
+      + 'Set MONGODB_URI to point at your MongoDB deployment, or run `npm install` with dev dependencies '
       + 'for a serverless local database.'
     );
   }
-  const dataDir = PGLITE_PATH === ':memory:' ? undefined : PGLITE_PATH;
-  const isNew = dataDir ? !fs.existsSync(dataDir) : true;
-  const pg = await PGlite.create(dataDir);
-  const query = async (sql, params) => {
-    const res = await pg.query(toPgPlaceholders(sql), params);
-    return { rows: res.rows, rowCount: res.affectedRows ?? res.rows.length };
-  };
-
-  if (isNew && dataDir) {
-    console.log(`[db] created a new embedded Postgres at ${dataDir} — run "npm run seed" to load demo data.`);
-  }
-
-  return {
-    kind: 'pglite',
-    query,
-    exec: (sql) => pg.exec(sql),
-    async transaction(fn) {
-      // PGlite drives one connection, so its own transaction helper is
-      // the equivalent of checking a client out of the pool.
-      return pg.transaction(async (txClient) => fn(makeExecutor(async (sql, params) => {
-        const res = await txClient.query(toPgPlaceholders(sql), params);
-        return { rows: res.rows, rowCount: res.affectedRows ?? res.rows.length };
-      })));
-    },
-    close: () => pg.close(),
-  };
+  // One node, but a replica set: transactions need an oplog.
+  const memoryServer = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+  const client = new MongoClient(memoryServer.getUri());
+  await client.connect();
+  return { kind: 'mongodb-memory', client, memoryServer };
 }
 
 async function init() {
-  backend = DATABASE_URL ? await initPg() : await initPglite();
-  // Idempotent: every statement in schema.sql is IF NOT EXISTS / ON
-  // CONFLICT DO NOTHING, so this runs safely on every boot and doubles
-  // as the migration step for a fresh server.
-  const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
-  await backend.exec(schema);
+  const started = MONGODB_URI ? await initServer() : await initMemory();
+  const database = started.client.db(MONGODB_DB);
+  // Idempotent: createCollection/collMod/createIndexes all converge on
+  // the same state, so this runs safely on every boot and doubles as
+  // the migration step for a fresh deployment.
+  await applySchema(database);
+  backend = { ...started, database, executor: makeExecutor(database, null) };
   return backend;
 }
 
@@ -180,34 +133,77 @@ function ready() {
   return readyPromise;
 }
 
-const base = makeExecutor(async (sql, params) => {
-  await ready();
-  return backend.query(sql, params);
-});
+/** Module-level collection accessors. Each method awaits ready() first,
+ *  so a handler never has to care whether the connection is up yet. */
+function lazyCollection(key) {
+  const methods = ['find', 'findOne', 'countDocuments', 'insertOne', 'insertMany',
+    'updateOne', 'updateMany', 'deleteOne', 'deleteMany', 'aggregate'];
+  const out = {};
+  for (const m of methods) {
+    out[m] = async (...args) => {
+      await ready();
+      return backend.executor[key][m](...args);
+    };
+  }
+  return out;
+}
 
 const db = {
-  ...base,
   ready,
-  /** Runs `fn` inside a transaction, rolling back on throw.
+
+  /** A fresh id for the two collections that had a BIGINT IDENTITY.
+   *  An ObjectId hex string rather than the ObjectId itself, so it
+   *  survives JSON.stringify as the same value it is stored as. */
+  newId: () => new ObjectId().toHexString(),
+
+  /** Cheap "is the database actually reachable" probe for /api/health.
+   *  A ping, not a query, so it says nothing about the schema — which
+   *  is the right scope for a health check. */
+  async ping() {
+    await ready();
+    await backend.database.command({ ping: 1 });
+  },
+
+  /** Runs `fn` inside a multi-document transaction, rolling back on
+   *  throw.
    *
-   *  `fn` receives the executor to use — every statement that must be
-   *  part of the transaction has to go through it, not through the
-   *  module-level `db`, which would take a different connection. */
+   *  `fn` receives the executor to use — every write that must be part
+   *  of the transaction has to go through it, not through the
+   *  module-level `db`, which is bound to no session and would commit
+   *  immediately.
+   *
+   *  Note the driver may run `fn` more than once: withTransaction
+   *  retries on a transient error. Everything passed to it here is
+   *  written to be safe to re-run from a clean slate, which is what an
+   *  aborted attempt leaves behind. */
   async transaction(fn) {
     await ready();
-    return backend.transaction(fn);
+    const session = backend.client.startSession();
+    try {
+      return await session.withTransaction(() => fn(makeExecutor(backend.database, session)));
+    } finally {
+      await session.endSession();
+    }
   },
+
   async close() {
     if (readyPromise) {
       await readyPromise;
-      await backend.close();
+      await backend.client.close();
+      if (backend.memoryServer) await backend.memoryServer.stop();
       readyPromise = null;
       backend = null;
     }
   },
-  /** Which engine answered — surfaced by GET /api/health. */
+
+  /** Which deployment answered — surfaced by GET /api/health. */
   kind: () => (backend ? backend.kind : null),
-  _toPgPlaceholders: toPgPlaceholders, // exported for its unit test
+
+  /** The database name in use, so a caller can tell a test database
+   *  from a production one before it deletes anything. */
+  name: () => MONGODB_DB,
 };
+
+for (const c of COLLECTIONS) db[c.key] = lazyCollection(c.key);
 
 module.exports = db;

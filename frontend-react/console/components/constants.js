@@ -29,7 +29,7 @@ export const NONLINEAR_META = [
   { title: 'Inter-DC Transfer',             role: 'Operator',  what: 'Rebalances Rolltainer stock between DCs — scanned out of one DC and into another.' },
 ];
 
-// Site types as stored in the sites table (backend/schema.sql).
+// Site types as stored in the sites collection (backend/src/schema.js).
 export const SITE_TYPES = [
   { type: 'DC',      label: 'Distribution Centres', placeholder: 'e.g. BLO-DC1' },
   { type: 'Hub',     label: 'Hubs / Vendor Sites',  placeholder: 'e.g. Polokwane (POL)' },

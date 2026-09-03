@@ -5,7 +5,7 @@
 // shared between both apps without dragging anything else along.
 //
 // One thing to watch: the backend stores timestamps as ISO 8601
-// strings (see backend/schema.sql), not epoch milliseconds like the
+// strings (see backend/src/schema.js), not epoch milliseconds like the
 // old localStorage prototype did. Everything here takes the ISO string
 // the API actually returns.
 

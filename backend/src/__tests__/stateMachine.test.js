@@ -1,42 +1,34 @@
 // src/__tests__/stateMachine.test.js
 //
-// Runs against a real PostgreSQL. `PGLITE_PATH=':memory:'` gets the
-// embedded engine, so the suite needs no server and no container — but
-// it is the same engine, the same dialect and the same driver-facing
-// code path as production. Set DATABASE_URL to run this identical suite
-// against a real PostgreSQL server:
+// Runs against a real MongoDB. With MONGODB_URI unset, src/db.js starts
+// a real mongod as a single-node replica set in a temp directory, so
+// the suite needs no server and no container — but it is the same
+// engine, the same query language and the same driver-facing code path
+// as production. Set MONGODB_URI to run this identical suite against a
+// real deployment:
 //
-//   DATABASE_URL=postgres://tfs:tfs@localhost:5432/tfs_test npm test
+//   MONGODB_URI=mongodb+srv://... MONGODB_DB=tfs_test npm run test:atlas
 //
-// Every call is awaited because the database layer is async now (see
-// src/db.js) — a network round-trip cannot be made to look synchronous.
-process.env.PGLITE_PATH = ':memory:';
+// The suite empties every collection between tests, so the database
+// name has to end in `_test` — helpers/reset.js refuses otherwise.
+//
+// Every call is awaited because the database layer is async — a network
+// round-trip cannot be made to look synchronous.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const db = require('../db');
 const sm = require('../lib/stateMachine');
-
-async function resetDb() {
-  // One statement, so the foreign keys between these tables never see a
-  // half-emptied database. RESTART IDENTITY keeps custody_log ids
-  // comparable between tests.
-  await db.run(`TRUNCATE custody_log, exceptions, manifest_assets, manifests, assets, sites RESTART IDENTITY CASCADE`);
-}
+const { resetDb, assetDoc, siteDoc } = require('./helpers/reset');
 
 async function seedMinimal() {
-  await db.ready();
   await resetDb();
-  await db.run(`INSERT INTO sites (code, name, type) VALUES ('JHB-DC1','JHB-DC1','DC')`);
-  await db.run(`INSERT INTO sites (code, name, type) VALUES ('Alberton (ALB)','Alberton','Hub')`);
-  await db.run(`INSERT INTO sites (code, name, type) VALUES ('CPT-DC1','CPT-DC1','DC')`);
-  const insertAsset = (id) => db.run(
-    `INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES (?, 'Rolltainer', 'JHB-DC1', 'Available at DC', 0, ?)`,
-    [id, sm.nowIso()]
-  );
-  await insertAsset('RT-100001');
-  await insertAsset('RT-100002');
-  await insertAsset('RT-100003');
+  await db.sites.insertMany([
+    siteDoc('JHB-DC1', 'JHB-DC1', 'DC'),
+    siteDoc('Alberton (ALB)', 'Alberton', 'Hub'),
+    siteDoc('CPT-DC1', 'CPT-DC1', 'DC'),
+  ]);
+  await db.assets.insertMany(['RT-100001', 'RT-100002', 'RT-100003'].map((id) => assetDoc(id)));
 }
 
 test.after(() => db.close());
@@ -54,24 +46,22 @@ test('TP1: opening a dispatch creates a manifest and moves scanned assets to In 
 
 test('TP1: rejects an asset that is not available at the claimed site', async () => {
   await seedMinimal();
-  await db.run(`UPDATE assets SET home_site_code='CPT-DC1' WHERE id='RT-100001'`);
+  await db.assets.updateOne({ _id: 'RT-100001' }, { $set: { home_site_code: 'CPT-DC1' } });
   await assert.rejects(() => sm.tp1DispatchOpen('JHB-DC1', 'T. Nkosi', ['RT-100001']), /not available/);
 });
 
 test('TP1: a rejected asset rolls the whole manifest back rather than leaving a half-open one', async () => {
-  // Worth asserting explicitly now that transactions run over a
-  // connection pool: a statement issued outside the transaction handle
-  // would commit on its own and survive this rollback.
+  // Worth asserting explicitly: a write issued through the module-level
+  // `db` rather than the transaction's `tx` would commit on its own and
+  // survive this rollback.
   await seedMinimal();
-  await db.run(`UPDATE assets SET home_site_code='CPT-DC1' WHERE id='RT-100002'`);
+  await db.assets.updateOne({ _id: 'RT-100002' }, { $set: { home_site_code: 'CPT-DC1' } });
   await assert.rejects(
     () => sm.tp1DispatchOpen('JHB-DC1', 'Op', ['RT-100001', 'RT-100002']),
     /not available/
   );
-  const manifests = await db.all(`SELECT * FROM manifests`);
-  assert.equal(manifests.length, 0, 'no manifest row should survive the failed open');
-  const custody = await db.all(`SELECT * FROM custody_log`);
-  assert.equal(custody.length, 0, 'no custody entry should survive either');
+  assert.equal(await db.manifests.countDocuments({}), 0, 'no manifest should survive the failed open');
+  assert.equal(await db.custodyLog.countDocuments({}), 0, 'no custody entry should survive either');
   const a1 = await sm.getAsset('RT-100001');
   assert.equal(a1.status, 'Available at DC', 'the asset that did validate must not be left In Dispatch');
 });
@@ -90,7 +80,7 @@ test('TP2: a missing asset is flagged Outstanding and logs a Missed Scan excepti
   const manifest = await sm.getManifest(manifestId);
   assert.equal(manifest.stage, 2, 'manifest closes even with a missing asset');
 
-  const exceptions = await db.all(`SELECT * FROM exceptions WHERE asset_id = 'RT-100002'`);
+  const exceptions = await db.exceptions.find({ asset_id: 'RT-100002' });
   assert.equal(exceptions.length, 1);
   assert.equal(exceptions[0].type, 'Missed Scan');
 });
@@ -113,7 +103,7 @@ test('full loop: TP1 → TP2 → TP3 → TP4 → TP5 → TP6 → TP7 returns the
   assert.equal(final.status, 'Available at DC');
   assert.equal(final.home_site_code, 'JHB-DC1');
 
-  const custody = await db.all(`SELECT note FROM custody_log WHERE asset_id = 'RT-100001' ORDER BY id`);
+  const custody = await db.custodyLog.find({ asset_id: 'RT-100001' }, { sort: { ts: 1 } });
   assert.equal(custody.length, 7, 'one custody entry per touch point');
 });
 
@@ -138,11 +128,13 @@ test('TP6 raises an Aged at Hub exception for stock left behind for a week or mo
 
   // RT-100002 has been sitting there for nine days and does not get
   // collected on this run.
-  const nineDaysAgo = new Date(Date.now() - 9 * 86400000).toISOString();
-  await db.run(`UPDATE assets SET hub_arrival_at = ? WHERE id = 'RT-100002'`, [nineDaysAgo]);
+  await db.assets.updateOne(
+    { _id: 'RT-100002' },
+    { $set: { hub_arrival_at: new Date(Date.now() - 9 * 86400000) } }
+  );
 
   await sm.tp6HubEmptyCollection('Alberton (ALB)', ['RT-100001'], 'HubOp');
-  const aged = await db.all(`SELECT * FROM exceptions WHERE type = 'Aged at Hub'`);
+  const aged = await db.exceptions.find({ type: 'Aged at Hub' });
   assert.equal(aged.length, 1);
   assert.equal(aged[0].asset_id, 'RT-100002');
   assert.match(aged[0].note, /9 days/);
@@ -150,7 +142,7 @@ test('TP6 raises an Aged at Hub exception for stock left behind for a week or mo
 
 test('TP7 Returns Facility Routing sets status to Available at Returns Facility', async () => {
   await seedMinimal();
-  await db.run(`INSERT INTO sites (code, name, type) VALUES ('Returns Facility — Isando','Isando','Returns')`);
+  await db.sites.insertOne(siteDoc('Returns Facility — Isando', 'Isando', 'Returns'));
   const { manifestId } = await sm.tp1DispatchOpen('JHB-DC1', 'Op', ['RT-100001']);
   await sm.tp2DispatchClose(manifestId, 'Alberton (ALB)', ['RT-100001'], 'Op');
   await sm.tp3TdtIntake(manifestId, ['RT-100001'], 'Driver');
@@ -175,7 +167,7 @@ test('Damaged Asset Scan-Out removes the asset from active fleet and logs an exc
   await seedMinimal();
   await sm.damagedScanOut('RT-100001', 'Cracked frame', 'TDT Clerk');
   assert.equal((await sm.getAsset('RT-100001')).status, 'Damaged / Written Off');
-  const exceptions = await db.all(`SELECT * FROM exceptions WHERE asset_id='RT-100001' AND type='Damaged'`);
+  const exceptions = await db.exceptions.find({ asset_id: 'RT-100001', type: 'Damaged' });
   assert.equal(exceptions.length, 1);
   await assert.rejects(() => sm.damagedScanOut('RT-100001', 'again', 'op'), /already marked damaged/);
 });
@@ -207,14 +199,38 @@ test('Inter-DC transfer out/in round trip, and rejects intake at the wrong site'
   assert.equal(a.home_site_code, 'CPT-DC1');
 });
 
-test('the ? placeholders every route is written with become Postgres $n, and quoted text is left alone', async () => {
-  // The rewrite in db.js is the single point where a mistake would turn
-  // every query in the codebase into a syntax error or, worse, shift a
-  // parameter silently.
-  const t = db._toPgPlaceholders;
-  assert.equal(t(`SELECT * FROM a WHERE x = ? AND y = ?`), 'SELECT * FROM a WHERE x = $1 AND y = $2');
-  assert.equal(t(`SELECT * FROM a WHERE note = 'why?' AND x = ?`), "SELECT * FROM a WHERE note = 'why?' AND x = $1");
-  assert.equal(t(`SELECT "odd?column" FROM a WHERE x = ?`), 'SELECT "odd?column" FROM a WHERE x = $1');
-  assert.equal(t(`SELECT * FROM a WHERE s = 'it''s ok?' AND x = ?`), "SELECT * FROM a WHERE s = 'it''s ok?' AND x = $1");
-  assert.equal(t(`SELECT 1`), 'SELECT 1');
+test('every write inside a touch point carries the transaction session', async () => {
+  // The MongoDB counterpart of the old placeholder-rewriter test: the
+  // one place in db.js where a mistake would be invisible per call and
+  // catastrophic in aggregate. A wrapper that quietly dropped the
+  // session would still pass every assertion above — the writes would
+  // simply commit outside the transaction and survive a rollback — so
+  // assert the plumbing directly rather than only its effects.
+  await db.ready();
+  await db.transaction(async (tx) => {
+    assert.ok(tx.session, 'the executor handed to fn must carry a session');
+    assert.ok(tx.session.inTransaction(), 'and that session must be inside the transaction');
+    for (const key of ['assets', 'manifests', 'manifestAssets', 'custodyLog', 'exceptions', 'fleetCounters']) {
+      assert.ok(tx[key], `tx.${key} must exist`);
+      assert.notEqual(tx[key], db[key], `tx.${key} must not be the sessionless module-level accessor`);
+    }
+  });
+});
+
+test('the schema validator rejects a document the SQL CHECK constraints would have', async () => {
+  // The CHECK constraints did not survive the move to MongoDB as
+  // constraints; they survived as $jsonSchema validators, and this is
+  // the test that says so. Without it, "we kept the enums" is a comment
+  // in src/schema.js and nothing more.
+  await seedMinimal();
+  await assert.rejects(
+    () => db.sites.insertOne(siteDoc('BAD-1', 'Bad', 'Warehouse')),
+    /validation/i,
+    'site.type is restricted to DC | Hub | Returns | GLS'
+  );
+  await assert.rejects(
+    () => db.assets.insertOne(assetDoc('RT-900001', { type: 'Pallet' })),
+    /validation/i,
+    'asset.type is restricted to Rolltainer | Hyper Cage'
+  );
 });

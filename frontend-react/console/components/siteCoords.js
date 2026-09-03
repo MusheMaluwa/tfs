@@ -2,7 +2,7 @@
 //
 // Fallback coordinates for the map.
 //
-// The sites table has real lat/lng columns (backend/schema.sql) and
+// The sites collection has real lat/lng fields (backend/src/schema.js) and
 // SiteMap prefers whatever the API returns for a site. But the current
 // seed does not populate them, so without this the map would be empty
 // against a freshly seeded database. This is the geocoding carried over

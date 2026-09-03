@@ -37,11 +37,26 @@ this link outside your team.
 
 ## Step 1 — Deploy the backend
 
-**First, create the database.** The API needs a PostgreSQL to point at.
+**First, create the database.** The API needs a MongoDB to point at,
+and Render does not offer one — its managed database product is
+PostgreSQL. Use MongoDB Atlas, which has a free tier:
 
-1. In the Render dashboard: **New +** → **PostgreSQL**.
-2. Name it `tfs-logistics-db`, database `tfs_logistics`, user `tfs`,
-   instance type **Free**. Create it and wait for it to go green.
+1. At <https://cloud.mongodb.com>: create a project and a **free M0
+   cluster**. Any region; closer to your Render region is faster.
+2. **Database Access** → add a database user with a password. Write
+   the password down — Atlas shows it once, and the connection string
+   is useless without it.
+3. **Network Access** → the Render free plan does not give you static
+   outbound IPs, so add `0.0.0.0/0` (allow from anywhere). That makes
+   the database password the only thing protecting it, so make it a
+   strong one. On a paid Render plan, add its static outbound IPs
+   instead and leave it at that.
+4. **Connect** → **Drivers** → copy the `mongodb+srv://...` string. It
+   contains a literal `<db_password>` placeholder; replace it with the
+   real password, and percent-encode any of `: / ? # [ ] @` in it.
+
+The cluster is a replica set, which is what the transactions in the
+touch-point logic need. Nothing extra to configure for that.
 
 **Then the web service.**
 
@@ -60,14 +75,17 @@ this link outside your team.
    - `AUTH_SECRET` → click "Generate" for a random value (do **not**
      leave this unset — the code falls back to an insecure default
      that's fine for local dev, not for anything with a public URL).
-   - `DATABASE_URL` → **Add from database** → pick `tfs-logistics-db`
-     → *Internal Connection String*. Without this the API has no
-     database: `--omit=dev` deliberately leaves out the embedded engine
-     that local development falls back to, and startup will fail with a
-     message telling you exactly this.
+   - `MONGODB_URI` → paste the Atlas connection string from above,
+     with the real password in it. Without this the API has no
+     database: `--omit=dev` deliberately leaves out the in-process
+     server that local development falls back to, and startup will
+     fail with a message telling you exactly this.
+   - `MONGODB_DB` → `tfs_logistics`. The connection string does not
+     name a database, so this is where it is decided.
 5. Set **Health Check Path** to `/api/health`. It reports which
-   database engine answered, so a green check means the API really
-   reached PostgreSQL rather than merely booting.
+   deployment answered and which database name it is using, so a green
+   check means the API really reached Atlas rather than merely
+   booting.
 6. Click **Create Web Service**. First deploy takes a few minutes.
 7. Once live, copy its URL — looks like
    `https://tfs-logistics-backend-xxxx.onrender.com`. You need this
@@ -77,11 +95,11 @@ this link outside your team.
 Blueprint if you would rather not click through it.
 
 **Why "seed" runs on every start, not just once:** it is safe to
-re-run — sites and assets insert `ON CONFLICT DO NOTHING`, so a
+re-run — sites and assets go in through `$setOnInsert` upserts, so a
 redeploy tops the demo data up rather than duplicating or wiping it.
-Unlike the previous SQLite setup, the managed database **does** persist
-across restarts, so real scans survive a redeploy. Drop `npm run seed &&`
-from the start command once there is real data you care about.
+Atlas persists across restarts, so real scans survive a redeploy. Drop
+`npm run seed &&` from the start command once there is real data you
+care about.
 
 ## Step 2 — Point the frontend at the backend
 

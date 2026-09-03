@@ -1,16 +1,17 @@
 # Render Blueprint — see DEPLOYMENT.md for the full guide.
 #
-# Deploys the backend (Node web service), a managed PostgreSQL, and the
-# React frontends (static site). Not fully hands-off: after the first
+# Deploys the backend (Node web service) and the React frontends
+# (static site). Not fully hands-off, in two places: after the first
 # deploy you still need to paste the backend's live URL into the
-# frontend (DEPLOYMENT.md step 5) — Render assigns that URL only once
-# the backend service exists, so it can't be known ahead of time here.
-
-databases:
-  - name: tfs-logistics-db
-    databaseName: tfs_logistics
-    user: tfs
-    plan: free
+# frontend (DEPLOYMENT.md step 5), and MONGODB_URI has to be set by
+# hand.
+#
+# There is no `databases:` block any more. Render's managed database
+# offering is PostgreSQL; MongoDB Atlas is a separate service with its
+# own account, so the connection string cannot be wired up from here
+# the way `fromDatabase` used to do it. Set MONGODB_URI in the Render
+# dashboard — DEPLOYMENT.md walks through it — and add Render's
+# outbound IPs to the Atlas access list.
 
 services:
   - type: web
@@ -19,21 +20,23 @@ services:
     rootDir: backend
     plan: free
     buildCommand: "npm ci --omit=dev"
-    # seed is safe to re-run: sites and assets insert ON CONFLICT DO
-    # NOTHING, so a redeploy tops up the demo data rather than
-    # duplicating or wiping it. Drop it once real data is in.
+    # seed is safe to re-run: sites and assets go in through
+    # $setOnInsert upserts, so a redeploy tops up the demo data rather
+    # than duplicating or wiping it. Drop it once real data is in.
     startCommand: "npm run seed && npm start"
     healthCheckPath: /api/health
     envVars:
       - key: AUTH_SECRET
         generateValue: true
-      # The managed database above. With this set the API uses
-      # node-postgres; without it, it would look for the embedded engine
-      # that `--omit=dev` deliberately leaves out of the build.
-      - key: DATABASE_URL
-        fromDatabase:
-          name: tfs-logistics-db
-          property: connectionString
+      # sync: false means "prompt me for this on first deploy and
+      # never store it in the repo" — which is what you want for a
+      # string containing a database password. Without it the API would
+      # look for the in-process mongod that `--omit=dev` deliberately
+      # leaves out of the build, and exit.
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: tfs_logistics
 
   - type: web
     name: tfs-logistics-scanner

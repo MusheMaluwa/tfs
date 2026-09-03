@@ -14,23 +14,6 @@ jobs:
   backend:
     runs-on: ubuntu-latest
 
-    # A real PostgreSQL, so CI proves the thing that actually ships and
-    # not only the embedded engine the default suite uses.
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: tfs
-          POSTGRES_PASSWORD: tfs
-          POSTGRES_DB: tfs_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U tfs -d tfs_test"
-          --health-interval 3s
-          --health-timeout 5s
-          --health-retries 20
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,17 +25,45 @@ jobs:
         working-directory: backend
         run: npm ci
 
-      - name: Test against the embedded PostgreSQL
+      # `npm test` starts its own mongod (mongodb-memory-server) as a
+      # single-node replica set, so there is no `services:` block here
+      # and no container to wait on. That is the same engine the
+      # deployment runs; what it does not prove is that the code works
+      # against a server reached over the network, which is what the
+      # step below is for.
+      - name: Test against the in-process MongoDB
         working-directory: backend
         run: npm test
 
-      - name: Test against a real PostgreSQL server
+      # A real mongod over TCP. Started by hand rather than through
+      # `services:` because it needs `--replSet` plus an rs.initiate()
+      # afterwards, and a service container gives nowhere to run that.
+      - name: Start a real MongoDB with a replica set
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:8 --replSet rs0 --bind_ip_all
+          for i in $(seq 1 30); do
+            docker exec mongo mongosh --quiet --eval \
+              "rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]})" && break
+            sleep 2
+          done
+          # initiate() returns before the node has actually become
+          # primary; transactions fail until it has.
+          for i in $(seq 1 30); do
+            docker exec mongo mongosh --quiet --eval \
+              "db.hello().isWritablePrimary" | grep -q true && break
+            sleep 2
+          done
+
+      - name: Test against that server
         working-directory: backend
         env:
-          DATABASE_URL: postgres://tfs:tfs@localhost:5432/tfs_test
-        # Sequential: both suites reset the same tables, and here they
-        # share one server rather than getting a database each.
-        run: npm run test:pg
+          MONGODB_URI: mongodb://localhost:27017/?replicaSet=rs0
+          # Must end in _test — the suites delete every document, and
+          # src/__tests__/helpers/reset.js refuses anything else.
+          MONGODB_DB: tfs_test
+        # Sequential: both suites empty the same collections, and here
+        # they share one server rather than getting one each.
+        run: npm run test:atlas
 
   frontend:
     runs-on: ubuntu-latest
@@ -71,22 +82,6 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: tfs
-          POSTGRES_PASSWORD: tfs
-          POSTGRES_DB: tfs_logistics
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U tfs -d tfs_logistics"
-          --health-interval 3s
-          --health-timeout 5s
-          --health-retries 20
-    env:
-      DATABASE_URL: postgres://tfs:tfs@localhost:5432/tfs_logistics
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -95,9 +90,25 @@ jobs:
       - name: Install backend
         working-directory: backend
         run: npm ci
+      - name: Start a real MongoDB with a replica set
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:8 --replSet rs0 --bind_ip_all
+          for i in $(seq 1 30); do
+            docker exec mongo mongosh --quiet --eval \
+              "rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]})" && break
+            sleep 2
+          done
+          for i in $(seq 1 30); do
+            docker exec mongo mongosh --quiet --eval \
+              "db.hello().isWritablePrimary" | grep -q true && break
+            sleep 2
+          done
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: Run end-to-end suite against a local server
+        env:
+          MONGODB_URI: mongodb://localhost:27017/?replicaSet=rs0
+          MONGODB_DB: tfs_e2e_test
         run: |
           cd backend && npm run seed && node src/server.js &
           # The API applies the schema before it listens, so poll the

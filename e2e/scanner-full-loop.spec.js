@@ -12,22 +12,24 @@ const { chromium } = require('playwright');
 function assert(cond, msg) { if (!cond) throw new Error('ASSERTION FAILED: ' + msg); }
 
 async function main() {
-  // A throwaway PostgreSQL in-process, so this needs no server. Set
-  // DATABASE_URL to run the same script against a real one.
-  process.env.PGLITE_PATH = process.env.PGLITE_PATH || ':memory:';
+  // A throwaway MongoDB in-process, so this needs no server. Set
+  // MONGODB_URI (with MONGODB_DB ending in _test) to run the same
+  // script against a real deployment.
   process.env.PORT = '0';
   const app = require(path.join(__dirname, '..', 'backend', 'src', 'server.js'));
   const db = require(path.join(__dirname, '..', 'backend', 'src', 'db.js'));
+  const { resetDb, assetDoc, siteDoc } = require(path.join(__dirname, '..', 'backend', 'src', '__tests__', 'helpers', 'reset.js'));
 
   await db.ready();
-  await db.run(`TRUNCATE custody_log, exceptions, manifest_assets, manifests, assets, sites RESTART IDENTITY CASCADE`);
-  await db.run(`INSERT INTO sites (code, name, type) VALUES ('JHB-DC1','JHB-DC1','DC')`);
-  await db.run(`INSERT INTO sites (code, name, type) VALUES ('CPT-DC1','CPT-DC1','DC')`);
-  await db.run(`INSERT INTO sites (code, name, type) VALUES ('Alberton (ALB)','Alberton','Hub')`);
-  await db.run(`INSERT INTO sites (code, name, type) VALUES ('Returns Facility — Isando','Isando','Returns')`);
-  const seedAsset = (id, site, status) => db.run(
-    `INSERT INTO assets (id, type, home_site_code, status, stage, registered_at) VALUES (?, 'Rolltainer', ?, ?, 0, now())`,
-    [id, site, status]
+  await resetDb();
+  await db.sites.insertMany([
+    siteDoc('JHB-DC1', 'JHB-DC1', 'DC'),
+    siteDoc('CPT-DC1', 'CPT-DC1', 'DC'),
+    siteDoc('Alberton (ALB)', 'Alberton', 'Hub'),
+    siteDoc('Returns Facility — Isando', 'Isando', 'Returns'),
+  ]);
+  const seedAsset = (id, site, status) => db.assets.insertOne(
+    assetDoc(id, { home_site_code: site, status })
   );
   await seedAsset('RT-100001', 'JHB-DC1', 'Available at DC');
   await seedAsset('RT-100002', 'JHB-DC1', 'Available at DC');

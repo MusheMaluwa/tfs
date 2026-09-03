@@ -17,7 +17,7 @@ router.post('/login', async (req, res) => {
   if (!operatorName || !role) return res.status(400).json({ error: 'operatorName and role are required' });
   if (!VALID_ROLES.includes(role)) return res.status(400).json({ error: `role must be one of: ${VALID_ROLES.join(', ')}` });
   if (siteCode) {
-    const site = await db.get(`SELECT 1 FROM sites WHERE code = ?`, [siteCode]);
+    const site = await db.sites.findOne({ _id: siteCode }, { projection: { _id: 1 } });
     if (!site) return res.status(400).json({ error: 'unknown siteCode' });
   }
   const token = issueToken({ operatorName, role, siteCode });

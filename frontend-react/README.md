@@ -111,7 +111,7 @@ npm run verify:separation   # 11 — the architecture itself
 | Layer | Verified? | How |
 |---|---|---|
 | Component rendering | **Yes** | The real, locally installed `react-dom/server` renders every component and asserts on the output. Not a mock — the genuine reconciler, running the identical module files the browser loads. |
-| Pure logic (rollups, filtering, cycle time, CSV escaping, coordinate fallback) | **Yes** | Unit-tested directly against rows shaped exactly as `backend/schema.sql` returns them — snake_case columns, ISO timestamps. |
+| Pure logic (rollups, filtering, cycle time, CSV escaping, coordinate fallback) | **Yes** | Unit-tested directly against documents shaped exactly as `backend/src/schema.js` defines them — snake_case fields, ISO timestamps. |
 | App separation | **Yes** | `separation.test.js`, described above. |
 | Backend contract | **Yes, by hand** | Every endpoint both apps call was exercised against the running API: login, dashboard summary, assets, asset detail with custody log, exceptions, manifests, sites, asset creation, site create/delete (including the 409 on a site in use), and a full TP1→TP2 round trip returning the expected `missing` list. |
 | Live browser rendering, clicking, camera, map tiles | **No** | Needs a browser with outbound internet to fetch React from esm.sh — the same already-documented limitation as ZXing and Leaflet in the vanilla build. |

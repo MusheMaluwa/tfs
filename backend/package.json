@@ -1,7 +1,7 @@
 {
   "name": "tfs-logistics-backend",
   "version": "1.0.0",
-  "description": "Production-shaped REST API for TFS Logistics / Mercury - every touch point, WSW, and non-linear flow implemented, with auth, caching, and a full test suite. Runs on PostgreSQL: node-postgres against DATABASE_URL, or an embedded PostgreSQL (PGlite) when that is unset, so tests and a first local run need no server.",
+  "description": "Production-shaped REST API for TFS Logistics / Mercury - every touch point, WSW, and non-linear flow implemented, with auth, caching, and a full test suite. Runs on MongoDB: the official driver against MONGODB_URI, or a throwaway in-process mongod when that is unset, so tests and a first local run need no server.",
   "main": "src/server.js",
   "type": "commonjs",
   "engines": {
@@ -11,14 +11,14 @@
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "start": "node --env-file-if-exists=.env src/server.js",
     "seed": "node --env-file-if-exists=.env src/seed.js",
-    "test": "node --test \"src/__tests__/*.test.js\"",
-    "test:watch": "node --test --watch \"src/__tests__/*.test.js\"",
-    "test:pg": "node scripts/require-database-url.js && node --test --test-concurrency=1 src/__tests__/stateMachine.test.js src/__tests__/api.test.js"
+    "test": "node --test --test-concurrency=1 \"src/__tests__/*.test.js\"",
+    "test:watch": "node --test --test-concurrency=1 --watch \"src/__tests__/*.test.js\"",
+    "test:atlas": "node scripts/require-mongodb-uri.js && node --test --test-concurrency=1 src/__tests__/stateMachine.test.js src/__tests__/api.test.js"
   },
   "dependencies": {
-    "pg": "^8.23.0"
+    "mongodb": "^6.21.0"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8"
+    "mongodb-memory-server": "^10.4.3"
   }
 }

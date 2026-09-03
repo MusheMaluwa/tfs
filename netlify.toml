@@ -30,7 +30,8 @@
 # cannot reach a reviewer's own machine, and Chrome's local-network
 # access controls block a public origin from calling localhost even for
 # the person running it. `render.yaml` in this directory provisions the
-# backend and a managed PostgreSQL; point the apps at its URL once it is
+# backend (its database is a MongoDB Atlas cluster you create
+# separately — see DEPLOYMENT.md); point the apps at its URL once it is
 # live. Until then, run both halves locally — `npm run serve` here and
 # `npm run dev` in backend/.
 

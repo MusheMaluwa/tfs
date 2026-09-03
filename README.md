@@ -48,11 +48,11 @@ described.
 - **`backend/`** — every touch point (TP1–TP7, including Returns
   Facility Routing), both WSW steps, all 5 non-linear flows. Real
   auth with role enforcement, idempotency keys, a caching layer with
-  invalidation. Runs on **PostgreSQL** — `node-postgres` against
-  `DATABASE_URL`, or an embedded PostgreSQL (PGlite) when that is
-  unset, so tests and a first local run need no server. **23 passing
+  invalidation. Runs on **MongoDB** — the official driver against
+  `MONGODB_URI`, or a real `mongod` started in-process when that is
+  unset, so tests and a first local run need no server. **25 passing
   tests**, including real HTTP round-trips against a running server,
-  and the same suite runs against either engine. See
+  and the same suite runs against either deployment. See
   `backend/README.md` for the remaining swap-in path to
   Express/Redis/jsonwebtoken.
 - **`frontend/mercury-scanner.html`** — the original vanilla-JS
@@ -119,7 +119,8 @@ available in the environment this was built in:
 tfs-logistics/
   backend/                      complete, tested, running application
     src/
-      db.js                     PostgreSQL adapter (pg | embedded)
+      db.js                     MongoDB adapter (Atlas | in-process)
+      schema.js                 collections, validators, indexes
       server.js                  entry point
       seed.js                    demo data loader
       lib/
@@ -129,8 +130,7 @@ tfs-logistics/
         cache.js                   in-memory cache (Redis-interface-compatible)
       middleware/auth.js           requireAuth / requireRole
       routes/                      one file per resource
-      __tests__/                   20 tests, unit + integration
-    schema.sql
+      __tests__/                   25 tests, unit + integration
     README.md
     Dockerfile
   frontend/
