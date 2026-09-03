@@ -9,6 +9,8 @@ frontend-react/
 
   shared/             the ONLY thing crossing between the two apps
     api.js            the whole backend contract, one copy
+    data.js           the same contract, served from hardcoded demo
+                      data — what both apps use while the API is off
     format.js         date / status / CSV helpers (pure, no React)
     tokens.css        the palette + reset + chip/alert/toast primitives
     Toast.js          a genuinely identical UI component
@@ -60,6 +62,25 @@ scanner namespaces its storage keys, and that the console never grows
 a sign-in. Those are the things that quietly rot otherwise.
 
 ## Running it
+
+**Right now both apps run on local demo data, with no backend.**
+
+```bash
+cd frontend-react && npm run serve            # http://localhost:5173
+```
+
+That is all it takes: `shared/data.js` holds a hardcoded fleet — sites,
+assets, manifests part-way through every touch point, custody history,
+exceptions — and implements `createApi` against it in the browser,
+applying the same rules as `backend/src/lib/stateMachine.js`. State
+lives in `localStorage`, so a scan in the scanner shows up in the
+console, and `TFS.resetLocalData()` in the browser console puts the
+seed back.
+
+Nothing was removed to do this. `shared/api.js` (the HTTP client) and
+the whole MongoDB backend are untouched; each app's `app.js` has the
+real import sitting commented out directly above the local one. To go
+back to MongoDB, start the API and swap those two lines:
 
 ```bash
 # terminal 1 — the API both apps talk to

@@ -14,7 +14,27 @@
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { createApi } from '../shared/api.js';
+
+// ---------------------------------------------------------------------
+// RUNNING ON LOCAL DEMO DATA — the MongoDB backend is switched off.
+//
+// The line below is the live API client: it talks HTTP to the Node/
+// MongoDB service in ../backend. Nothing about it has been deleted —
+// shared/api.js is untouched and the backend still builds and runs.
+// It is commented out only because the API is not up right now, which
+// is what produced ERR_CONNECTION_REFUSED on localhost:4000.
+//
+// import { createApi } from '../shared/api.js';
+//
+// In its place, shared/data.js serves the hardcoded fleet and applies
+// the same touch-point rules in the browser. It exports `createApi`
+// with an identical signature, so no component below changes.
+//
+// TO GO BACK TO MONGODB: start the API (cd ../backend && npm run dev),
+// then swap the two import lines back.
+// ---------------------------------------------------------------------
+import { createApi } from '../shared/data.js';
+
 import { Toast, useToast } from '../shared/Toast.js';
 import { Login } from './components/Login.js';
 import { Picker } from './components/Picker.js';

@@ -23,7 +23,26 @@
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { createApi } from '../shared/api.js';
+
+// ---------------------------------------------------------------------
+// RUNNING ON LOCAL DEMO DATA — the MongoDB backend is switched off.
+//
+// The line below is the live API client: it talks HTTP to the Node/
+// MongoDB service in ../backend. Nothing has been deleted —
+// shared/api.js is untouched and the backend still builds and runs.
+// It is commented out only because the API is not up right now.
+//
+// import { createApi } from '../shared/api.js';
+//
+// shared/data.js takes its place: the same `createApi` surface, served
+// from the hardcoded fleet in that file and kept in localStorage, so
+// the scanner app and this one still see the same data.
+//
+// TO GO BACK TO MONGODB: start the API (cd ../backend && npm run dev),
+// then swap the two import lines back.
+// ---------------------------------------------------------------------
+import { createApi } from '../shared/data.js';
+
 import { Toast, useToast } from '../shared/Toast.js';
 import { Dashboard } from './components/Dashboard.js';
 import { Registry } from './components/Registry.js';
